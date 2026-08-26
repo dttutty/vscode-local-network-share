@@ -166,6 +166,8 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     .label { color: var(--vscode-descriptionForeground); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
     .value { overflow-wrap: anywhere; font-weight: 600; }
     .description { color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.45; }
+    .explainer { padding: 10px; color: var(--vscode-descriptionForeground); background: var(--vscode-textBlockQuote-background); border-left: 3px solid var(--vscode-textBlockQuote-border); border-radius: 3px; font-size: 12px; line-height: 1.5; }
+    .explainer strong { display: block; margin-bottom: 4px; color: var(--vscode-foreground); }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; }
     button { padding: 7px 12px; border: 0; border-radius: 3px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); cursor: pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
@@ -211,6 +213,10 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
         <button id="target" class="link">Select host…</button>
       </div>
       <div id="message" class="description"></div>
+      <div id="howItWorks" class="explainer">
+        <strong>How it works</strong>
+        Your laptop opens an additional SSH reverse tunnel to this host. It exposes loopback-only SOCKS5 and HTTP proxy endpoints on the server, then injects their environment variables into new VS Code terminals. External traffic exits through your laptop's network without publishing a server port or changing the server's default route.
+      </div>
       <div class="actions">
         <button id="start" data-command="localNetworkShare.start">Start sharing</button>
         <button id="stop" data-command="localNetworkShare.stop">Stop sharing</button>
@@ -308,6 +314,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       status.className = 'pill ' + presentation[1];
       document.getElementById('target').textContent = state.target || 'Select host…';
       document.getElementById('message').textContent = state.message || (active ? 'New integrated terminals receive the proxy environment.' : 'Start sharing to make the local network available on this SSH host.');
+      document.getElementById('howItWorks').hidden = state.phase !== 'idle' && state.phase !== 'error';
       document.getElementById('start').style.display = state.phase === 'idle' || state.phase === 'error' ? '' : 'none';
       document.getElementById('stop').style.display = active || state.phase === 'stopping' ? '' : 'none';
       document.getElementById('restart').style.display = active ? '' : 'none';

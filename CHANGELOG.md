@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.8
+
+- Explain the SSH reverse-tunnel and loopback-proxy design while sharing is inactive, then hide the explanation as soon as startup begins.
+
 ## 0.2.7
 
 - Hide Proxy coverage and APT/sudo commands until network sharing is active, and hide them again after sharing stops.

@@ -98,6 +98,8 @@ The **APT and sudo commands** section displays each exact command in a non-edita
 
 **Proxy coverage** and **APT and sudo commands** appear only after network sharing reaches the active state. Both sections hide again when sharing stops, preventing commands from being used against an inactive proxy endpoint.
 
+While sharing is inactive, the connection card explains the architecture: an additional SSH reverse tunnel exposes loopback-only proxy endpoints on the server, and new terminals receive their environment variables so traffic exits through the laptop network. The explanation hides as soon as startup begins.
+
 ## Sudo and advanced transparent mode
 
 The extension can perform a non-interactive, read-only check for sudo membership and relevant Linux capabilities before sharing starts. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.

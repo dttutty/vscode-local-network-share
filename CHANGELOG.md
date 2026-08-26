@@ -2,7 +2,7 @@
 
 ## 0.1.4
 
-- Redesign the Activity Bar and Marketplace icons around the same laptop-to-1U-server connection motif.
+- Refine the Activity Bar icon and use the clear laptop-to-server tunnel design for the Marketplace icon.
 - Add an English and Chinese tool compatibility matrix for APT, npm, Conda, Docker, Homebrew, pip, uv, and other common clients.
 
 ## 0.1.3

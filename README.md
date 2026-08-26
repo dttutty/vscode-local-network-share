@@ -94,6 +94,8 @@ The extension changes the environment of newly created VS Code integrated termin
 
 The main sidebar is a custom Webview dashboard rather than a native tree. It keeps connection state, target selection, Start/Stop, proxy endpoints, APT actions, logs, settings, and Advanced TUN controls together without duplicate view-title icons. Its expandable **Proxy coverage** section identifies new terminals and common environment-aware tools as usually covered, marks existing terminals and APT/sudo as requiring action, and clearly lists Docker daemon, systemd, cron, and applications that ignore proxy variables as unmanaged. Coverage is inferred from the environment controlled by the extension; it is not live inspection of running processes.
 
+The **APT and sudo commands** section displays each exact command in a read-only text box with its own Copy button, so the command can be inspected before anything is pasted into a terminal.
+
 ## Sudo and advanced transparent mode
 
 The extension can perform a non-interactive, read-only check for sudo membership and relevant Linux capabilities before sharing starts. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.
@@ -102,7 +104,9 @@ Because the readiness check never prompts for a password, password-protected sud
 
 The main status view contains **Open Advanced TUN Setup…**. After an explicit physical/BMC-access warning, it expands a custom Webview directly inside the Local Network Share sidebar instead of opening an editor tab. The sidebar shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
 
-Opening Advanced TUN hides the main Network Sharing dashboard and switches the sidebar to the advanced interface. Its Back control restores the main dashboard. This is an interface switch only: an active proxy tunnel keeps running until **Stop sharing** is selected.
+Opening Advanced TUN hides the main Network Sharing dashboard and switches the sidebar to the advanced interface. Selecting **Basic mode** restores the main dashboard. This is an interface switch only: an active proxy tunnel keeps running until **Stop sharing** is selected.
+
+Both sidebar interfaces have a **Basic mode / TUN mode** tab bar at the top. The active mode is highlighted, and selecting the other tab switches interfaces.
 
 ## Security
 

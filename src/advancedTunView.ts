@@ -109,6 +109,10 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
     :root { color-scheme: light dark; }
     body { margin: 0; padding: 12px; color: var(--vscode-foreground); background: var(--vscode-sideBar-background); font-family: var(--vscode-font-family); }
     main { width: 100%; }
+    .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 14px; padding: 3px; border: 1px solid var(--vscode-widget-border); border-radius: 7px; background: var(--vscode-editorWidget-background); }
+    .mode-tab { padding: 7px 8px; color: var(--vscode-descriptionForeground); background: transparent; }
+    .mode-tab:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
+    .mode-tab.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); font-weight: 600; }
     h1 { margin: 0 0 6px; font-size: 20px; }
     h2 { margin: 0 0 16px; font-size: 16px; }
     p { line-height: 1.55; }
@@ -150,13 +154,14 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
     .notice.error { color: var(--vscode-errorForeground); }
     summary { cursor: pointer; font-weight: 600; }
     details[open] summary { margin-bottom: 12px; }
-    .back { margin: 0 0 12px; padding: 0; color: var(--vscode-textLink-foreground); background: transparent; }
-    .back:hover { color: var(--vscode-textLink-activeForeground); background: transparent; }
   </style>
 </head>
 <body>
   <main>
-    <button id="back" class="back">← Network Sharing</button>
+    <nav class="mode-tabs" aria-label="Network sharing mode">
+      <button id="basicMode" class="mode-tab" aria-selected="false">Basic mode</button>
+      <button class="mode-tab active" aria-selected="true">TUN mode</button>
+    </nav>
     <h1>Advanced TUN Setup</h1>
     <p class="subtitle">A guided planning page for applications that cannot use SOCKS5 or HTTP proxy settings.</p>
 
@@ -340,7 +345,7 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
 
     safety.addEventListener('change', updateControls);
     routing.addEventListener('change', updateControls);
-    document.getElementById('back').addEventListener('click', () => vscode.postMessage({ type: 'closeView' }));
+    document.getElementById('basicMode').addEventListener('click', () => vscode.postMessage({ type: 'closeView' }));
     document.getElementById('startSharing').addEventListener('click', () => vscode.postMessage({ type: 'startSharing' }));
     document.getElementById('stopSharing').addEventListener('click', () => vscode.postMessage({ type: 'stopSharing' }));
     document.getElementById('check').addEventListener('click', () => vscode.postMessage({ type: 'checkRequirements' }));

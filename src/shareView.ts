@@ -43,7 +43,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
 
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
-  private state = createShareViewState({ phase: 'idle' }, undefined, 17890, true);
+  private state = createShareViewState({ phase: 'idle' }, undefined, 17890, 17891, true);
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
@@ -59,8 +59,14 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     );
   }
 
-  update(state: TunnelState, target: string | undefined, port: number, injectHttpProxyVariables: boolean): void {
-    this.state = createShareViewState(state, target, port, injectHttpProxyVariables);
+  update(
+    state: TunnelState,
+    target: string | undefined,
+    port: number,
+    httpPort: number,
+    injectHttpProxyVariables: boolean,
+  ): void {
+    this.state = createShareViewState(state, target, port, httpPort, injectHttpProxyVariables);
     void this.view?.webview.postMessage({ type: 'state', state: this.state });
   }
 
@@ -103,6 +109,10 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     :root { color-scheme: light dark; }
     body { margin: 0; padding: 12px; color: var(--vscode-foreground); background: var(--vscode-sideBar-background); font-family: var(--vscode-font-family); }
     main { display: grid; gap: 12px; }
+    .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; border: 1px solid var(--vscode-widget-border); border-radius: 7px; background: var(--vscode-editorWidget-background); }
+    .mode-tab { padding: 7px 8px; color: var(--vscode-descriptionForeground); background: transparent; }
+    .mode-tab:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
+    .mode-tab.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); font-weight: 600; }
     .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .hero { display: grid; gap: 12px; }
     .status-line, .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -133,14 +143,23 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     .coverage .row:last-child { border-bottom: 0; }
     .item-title { font-weight: 600; }
     .item-copy { min-width: 0; }
-    .apt-grid { display: grid; gap: 8px; }
-    .apt-grid button { width: 100%; text-align: left; }
+    .apt-grid { display: grid; gap: 12px; }
+    .command-box { display: grid; gap: 6px; }
+    .command-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .command-title { font-size: 12px; font-weight: 600; }
+    .copy-button { padding: 3px 8px; font-size: 11px; }
+    textarea { box-sizing: border-box; width: 100%; min-height: 56px; padding: 8px; resize: vertical; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 3px; font-family: var(--vscode-editor-font-family); font-size: 11px; line-height: 1.45; }
+    textarea:focus { outline: 1px solid var(--vscode-focusBorder); }
     .notice { min-height: 16px; color: var(--vscode-descriptionForeground); font-size: 12px; }
     .notice.error { color: var(--vscode-errorForeground); }
   </style>
 </head>
 <body>
   <main>
+    <nav class="mode-tabs" aria-label="Network sharing mode">
+      <button class="mode-tab active" aria-selected="true">Basic mode</button>
+      <button class="mode-tab" aria-selected="false" data-command="localNetworkShare.openAdvancedTunSetup">TUN mode</button>
+    </nav>
     <section class="card hero">
       <div class="status-line">
         <span class="status-title">Network sharing</span>
@@ -199,12 +218,24 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
 
     <details class="card">
       <summary>APT and sudo commands</summary>
-      <p class="description">Commands are copied for review; the extension never runs sudo automatically.</p>
+      <p class="description">Review the exact command, then use Copy. Start sharing before running it; the extension never executes sudo automatically.</p>
       <div class="apt-grid">
-        <button class="secondary apt-action" data-command="localNetworkShare.copyAptUpdate" data-apt="update">Copy one-time apt update</button>
-        <button class="secondary apt-action" data-command="localNetworkShare.copyAptInstall" data-apt="install">Copy apt install command</button>
-        <button class="secondary apt-action" data-command="localNetworkShare.copyAptPersistentSetup" data-apt="persistent">Copy persistent APT setup</button>
-        <button class="secondary apt-action" data-command="localNetworkShare.copyAptPersistentRemoval" data-apt="remove">Copy persistent setup removal</button>
+        <div class="command-box">
+          <div class="command-header"><span class="command-title">One-time apt update</span><button class="copy-button" data-command="localNetworkShare.copyAptUpdate">Copy</button></div>
+          <textarea id="apt-update" rows="3" readonly aria-label="One-time apt update command"></textarea>
+        </div>
+        <div class="command-box">
+          <div class="command-header"><span class="command-title">Install a package</span><button class="copy-button" data-command="localNetworkShare.copyAptInstall">Copy</button></div>
+          <textarea id="apt-install" rows="3" readonly aria-label="APT install command"></textarea>
+        </div>
+        <div class="command-box">
+          <div class="command-header"><span class="command-title">Persistent APT proxy setup</span><button class="copy-button" data-command="localNetworkShare.copyAptPersistentSetup">Copy</button></div>
+          <textarea id="apt-persistent" rows="5" readonly aria-label="Persistent APT proxy setup command"></textarea>
+        </div>
+        <div class="command-box">
+          <div class="command-header"><span class="command-title">Remove persistent setup</span><button class="copy-button" data-command="localNetworkShare.copyAptPersistentRemoval">Copy</button></div>
+          <textarea id="apt-remove" rows="2" readonly aria-label="Persistent APT proxy removal command"></textarea>
+        </div>
       </div>
     </details>
 
@@ -257,10 +288,10 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
         element.textContent = state.injectHttpProxyVariables ? 'Usually covered' : 'SOCKS support varies';
         element.className = 'badge typical ' + (state.injectHttpProxyVariables ? 'covered' : 'manual');
       });
-      document.querySelectorAll('.apt-action').forEach(element => {
-        element.disabled = !active;
-        element.title = state.aptCommands[element.dataset.apt];
-      });
+      document.getElementById('apt-update').value = state.aptCommands.update;
+      document.getElementById('apt-install').value = state.aptCommands.install;
+      document.getElementById('apt-persistent').value = state.aptCommands.persistent;
+      document.getElementById('apt-remove').value = state.aptCommands.remove;
     }
 
     function runCommand(command) {
@@ -290,10 +321,11 @@ function createShareViewState(
   state: TunnelState,
   target: string | undefined,
   port: number,
+  configuredHttpPort: number,
   injectHttpProxyVariables: boolean,
 ): ShareViewState {
   const remotePort = state.remotePort ?? port;
-  const httpPort = state.remoteHttpPort ?? port + 1;
+  const httpPort = state.remoteHttpPort ?? configuredHttpPort;
   return {
     phase: state.phase,
     message: state.message,

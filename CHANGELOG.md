@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Add a persistent Basic mode / TUN mode tab bar at the top of both sidebar interfaces.
+- Show every APT/sudo command in a read-only text box with a Copy button in the upper-right corner.
+- Fix returning from Advanced TUN by reopening the Local Network Share container after switching view context and then focusing the main dashboard.
+
 ## 0.2.1
 
 - Switch between the Network Sharing and Advanced TUN Sidebar Webviews instead of leaving both interfaces open.

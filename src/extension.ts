@@ -49,6 +49,7 @@ export function activate(context: vscode.ExtensionContext): void {
       manager.currentState,
       target,
       settings.remotePort,
+      settings.httpProxyRemotePort,
       settings.injectHttpProxyVariables,
     );
     advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
@@ -65,12 +66,24 @@ export function activate(context: vscode.ExtensionContext): void {
     });
   };
 
+  const switchSidebarView = async (advanced: boolean) => {
+    await vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', advanced);
+    try {
+      await vscode.commands.executeCommand('workbench.view.extension.localNetworkShare');
+    } catch {
+      // The container may already be visible. Focusing the destination view below is sufficient.
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    await vscode.commands.executeCommand(
+      advanced ? AdvancedTunViewProvider.viewType + '.focus' : ShareViewProvider.viewType + '.focus',
+    );
+  };
+
   advancedTunView = new AdvancedTunViewProvider(
     createAdvancedTunViewState(manager, readSettings(), resolveSshTarget(readSettings().sshTarget)),
     {
       closeView: async () => {
-        await vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', false);
-        await vscode.commands.executeCommand(`${ShareViewProvider.viewType}.focus`);
+        await switchSidebarView(false);
       },
       startSharing: async () => {
         await vscode.commands.executeCommand('localNetworkShare.start');
@@ -229,8 +242,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const settings = readSettings();
       const target = manager.currentState.target ?? resolveSshTarget(settings.sshTarget);
       advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
-      await vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', true);
-      await advancedTunView.reveal();
+      await switchSidebarView(true);
     }),
     vscode.commands.registerCommand('localNetworkShare.chooseSshTarget', async () => {
       const target = await chooseAndSaveSshTarget();

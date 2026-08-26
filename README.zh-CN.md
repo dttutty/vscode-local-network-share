@@ -9,9 +9,9 @@
 
 如果你的 laptop 可以通过 VPN、局域网或互联网访问这些资源，本扩展可以
 把 laptop 的网络连接共享给 VS Code Remote-SSH 打开的 Linux/macOS 主机。
-它会建立一个仅绑定远端回环地址的反向 SOCKS5 隧道，并向新建的 VS Code
-集成终端注入代理环境变量。请仅在获得授权且符合所在组织网络政策的前提下
-使用。
+它会建立仅绑定远端回环地址的 SOCKS5 和 HTTP CONNECT 代理端点，并向
+新建的 VS Code 集成终端注入代理环境变量。请仅在获得授权且符合所在组织
+网络政策的前提下使用。
 
 ## 环境要求
 
@@ -35,8 +35,8 @@
 
 ```sh
 ALL_PROXY=socks5h://127.0.0.1:17890
-HTTP_PROXY=socks5h://127.0.0.1:17890
-HTTPS_PROXY=socks5h://127.0.0.1:17890
+HTTP_PROXY=http://127.0.0.1:17891
+HTTPS_PROXY=http://127.0.0.1:17891
 ```
 
 已经打开的终端会保留旧环境，需要关闭后重新打开。如果终端或工具没有自动
@@ -44,27 +44,29 @@ HTTPS_PROXY=socks5h://127.0.0.1:17890
 
 ## 工具兼容性
 
-扩展提供的是 `socks5h://` 代理。代理环境变量并不是所有工具共同遵守的统一
-标准，因此实际兼容性取决于工具及其版本。下表根据所链接的官方文档整理。
+扩展同时提供 `socks5h://` 和真正的 HTTP CONNECT 代理。`ALL_PROXY` 使用
+SOCKS5h，HTTP 相关变量使用 HTTP 端点。代理环境变量并不是所有工具共同
+遵守的统一标准，因此实际兼容性仍取决于工具及其版本。下表根据所链接的
+官方文档整理。
 
-- ✅ 在新建的集成终端中，可直接使用当前 SOCKS5h 隧道。
-- ⚠️ 工具支持代理，但需要额外配置，或依赖可选/运行时组件提供 SOCKS 支持。
-- ❌ 仅靠当前终端变量和 SOCKS5h 端点无法使用。
+- ✅ 在新建的集成终端中可直接使用。
+- ⚠️ 工具支持代理，但需要额外的特权操作或工具专用配置。
+- ❌ 仅靠两个终端代理端点无法使用。
 
 | 工具 | 状态 | 说明与快速测试 |
 | --- | --- | --- |
 | [curl](https://curl.se/docs/manpage.html) | ✅ | 会读取注入的代理变量，并支持 `socks5h://`。测试：`curl https://api.ipify.org`。 |
 | [Git HTTPS](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpproxy) | ✅ | Git 使用 curl 的代理语法，通常读取 `http_proxy`、`https_proxy` 和 `all_proxy`。测试：`git ls-remote https://github.com/git/git.git HEAD`。这不会代理 `git@github.com:...` remote 使用的 SSH 协议。 |
-| [APT](https://manpages.debian.org/unstable/apt/apt-transport-http.1.en.html#Proxy_Configuration) | ⚠️ | APT 原生支持 `socks5h://`，但 `sudo` 通常会清除代理变量。可显式传入变量测试：`sudo env http_proxy="$http_proxy" https_proxy="$https_proxy" no_proxy="$no_proxy" apt update`。持久配置需要同时设置 `Acquire::http::Proxy` 和 `Acquire::https::Proxy`。 |
-| [npm](https://docs.npmjs.com/cli/v11/using-npm/config/#https-proxy) | ✅ | 当前 npm 会读取 `HTTP_PROXY` 和 `HTTPS_PROXY`，其当前[代理组件](https://github.com/npm/agent#features)支持 SOCKS4/5。测试：`npm ping`。旧版 npm 可能不同。 |
+| [APT](https://manpages.debian.org/unstable/apt/apt-transport-http.1.en.html#Proxy_Configuration) | ⚠️ | APT 支持显式代理配置，但 `sudo` 通常会清除终端变量。展开侧栏中的 **APT and sudo**，可复制可靠的单次 update/install 命令，或持久配置与移除命令。这些命令会显式传入 APT 代理参数，不依赖可能被 sudoers 策略限制的 `sudo -E`。 |
+| [npm](https://docs.npmjs.com/cli/v11/using-npm/config/#https-proxy) | ✅ | 当前 npm 会读取 `HTTP_PROXY` 和 `HTTPS_PROXY`。测试：`npm ping`。 |
 | [Homebrew](https://docs.brew.sh/Manpage#using-homebrew-behind-a-proxy) | ✅ | Homebrew 官方支持在 `all_proxy` 中使用 SOCKS5 URL。测试：`brew update`。 |
 | [uv](https://docs.astral.sh/uv/reference/environment/#all_proxy) | ✅ | 当前 uv 会把 `ALL_PROXY` 用于所有网络请求，并已提供 [SOCKS 支持](https://github.com/astral-sh/uv/issues/7484)。测试：`uv pip install --dry-run requests`。旧版拒绝该 URL 时请升级 uv。 |
 | [Cargo](https://doc.rust-lang.org/cargo/reference/config.html#httpproxy) | ✅ | Cargo 通过 `HTTP_PROXY`、`HTTPS_PROXY` 或 `CARGO_HTTP_PROXY` 接受 libcurl 代理语法。测试：`cargo search serde --limit 1`。 |
-| [pip](https://pip.pypa.io/en/stable/user_guide/#using-a-proxy-server) | ⚠️ | pip 会读取 `http_proxy` 和 `https_proxy` 并接受代理 URL，但 SOCKS 是否可用取决于已安装的 pip/Requests/PySocks 组件。测试：`python -m pip index versions pip`。如果提示缺少 SOCKS 支持，需要 HTTP CONNECT 转换代理。 |
-| [Conda](https://docs.conda.io/projects/conda/en/stable/user-guide/configuration/settings.html#proxy-servers-configure-conda-for-use-behind-a-proxy-server) | ⚠️ | Conda 会读取 `HTTP_PROXY` 和 `HTTPS_PROXY`，但官方 `.condarc` 只明确说明 HTTP/HTTPS 代理；SOCKS 行为取决于其 Python 网络组件。测试：`conda search python`。若拒绝 `socks5h://`，需要 HTTP CONNECT 转换代理。 |
-| [Docker build/run](https://docs.docker.com/engine/cli/proxy/) | ⚠️ | 需要把变量传进构建或容器，例如 `docker build --build-arg ALL_PROXY --build-arg HTTP_PROXY --build-arg HTTPS_PROXY .`。镜像/容器里的下载工具也必须支持 SOCKS。 |
-| [Docker pull](https://docs.docker.com/engine/daemon/proxy/) | ❌ | 拉取镜像的是 `dockerd`，不是当前终端进程。systemd 管理的 Docker daemon 不会继承这些变量，需要单独配置 daemon；官方配置面向 HTTP/HTTPS 代理，因此通常还需要 HTTP CONNECT 转换代理。 |
-| [GNU Wget](https://www.gnu.org/software/wget/manual/html_node/Proxies.html) | ❌ | GNU Wget 官方只说明 HTTP/HTTPS/FTP 代理 URL，没有说明 SOCKS 或 `ALL_PROXY`。可以改用 curl，或在 SOCKS 隧道前增加 HTTP CONNECT 转换代理。 |
+| [pip](https://pip.pypa.io/en/stable/user_guide/#using-a-proxy-server) | ✅ | pip 会读取 `http_proxy` 和 `https_proxy`，它们现在指向 HTTP 端点。测试：`python -m pip index versions pip`。 |
+| [Conda](https://docs.conda.io/projects/conda/en/stable/user-guide/configuration/settings.html#proxy-servers-configure-conda-for-use-behind-a-proxy-server) | ✅ | Conda 会读取 `HTTP_PROXY` 和 `HTTPS_PROXY`，它们现在使用官方说明的 HTTP 代理形式。测试：`conda search python`。 |
+| [Docker build/run](https://docs.docker.com/engine/cli/proxy/) | ⚠️ | 需要把变量传进构建或容器，例如 `docker build --build-arg HTTP_PROXY --build-arg HTTPS_PROXY .`。容器还需要能访问远端主机的回环代理，因此可能需要把 `127.0.0.1` 换成容器可达的主机地址。 |
+| [Docker pull](https://docs.docker.com/engine/daemon/proxy/) | ⚠️ | 拉取镜像的是 `dockerd`，不是当前终端进程。daemon 需要单独的特权代理配置并重启；仅在本地政策允许这种临时配置时才应指向 HTTP 端点。 |
+| [GNU Wget](https://www.gnu.org/software/wget/manual/html_node/Proxies.html) | ✅ | GNU Wget 支持 `http_proxy` 和 `https_proxy`，它们现在指向 HTTP 端点。测试：`wget -O- https://example.com/`。 |
 
 这份列表描述的是网络兼容性，并不保证某个工具的所有构建、插件或安装脚本
 都能使用代理；子进程也可能使用自己的网络库。无法确定时，请在新建终端中
@@ -72,8 +74,10 @@ HTTPS_PROXY=socks5h://127.0.0.1:17890
 
 ## SSH 目标检测
 
-扩展通常会根据当前远程工作区 URI 自动推断 SSH 配置别名。如果推断失败，
-请把 `localNetworkShare.sshTarget` 设置为 Remote-SSH 使用的同一目标，例如：
+扩展通常会根据当前远程工作区 URI 自动推断 SSH 配置别名。空的 Remote-SSH
+窗口可能不会向扩展提供这个别名。此时可以点击侧栏中的 **SSH target: Select
+host…**，或直接启动共享，然后输入 Remote-SSH 中选择的同一主机；扩展会保存
+选择供以后使用。也可以直接设置 `localNetworkShare.sshTarget`，例如：
 
 ```json
 {
@@ -88,12 +92,21 @@ HTTPS_PROXY=socks5h://127.0.0.1:17890
 
 扩展只会修改新建 VS Code 集成终端的环境，不会修改远端服务器的
 `/etc/environment`、systemd 服务、Docker daemon、Firewall 或透明路由。
-应用程序本身必须支持 SOCKS 代理 URL 或标准代理环境变量。
+应用程序本身必须支持 SOCKS 代理 URL 或标准 HTTP 代理环境变量。
 
-部分工具要求 `HTTP_PROXY` 和 `HTTPS_PROXY` 指向真正的 HTTP CONNECT
-代理，不接受 `socks5h://` URL。遇到这种情况时，可以关闭
-`localNetworkShare.injectHttpProxyVariables`，并让工具使用 `ALL_PROXY`；
-也可以在未来版本中增加 HTTP CONNECT 代理模式。
+## sudo 与高级透明模式
+
+共享启动后，扩展会以非交互、只读方式检查 sudo 成员身份以及相关 Linux
+能力，绝不会请求或保存 sudo 密码。**APT and sudo** 区域会提供显式代理命令，
+仍需由用户检查后自行粘贴执行，扩展不会自动运行这些 sudo 命令。
+
+主侧栏只保留 **Open Advanced TUN Setup…**。用户明确确认拥有物理访问或
+BMC/IPMI/iDRAC/iLO 等带外管理能力后，会打开独立的 Webview 设置页。页面
+使用卡片展示易懂的准备状态、路由隔离、网卡名、MTU、DNS 选项、重新检测和
+可审查的设置计划，不提供命令面板入口，也绝不会自动启用。当前版本不会请求
+sudo 密码、创建 TUN 网卡、安装软件或修改路由/DNS。修改共享服务器的默认
+路由可能导致 SSH 断线并影响其他用户，因此页面默认推荐 network namespace，
+并明确把全局路由标记为高风险。
 
 ## 安全说明
 

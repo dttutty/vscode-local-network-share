@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.5
+
+- Add a loopback-only HTTP CONNECT bridge alongside the SOCKS5 endpoint for tools such as pip, Conda, and Wget.
+- Detect remote sudo access with a non-interactive read-only check and provide reviewable APT setup/removal commands.
+- Move Advanced TUN out of the native tree into a dedicated Webview setup page with safety confirmation, friendly readiness cards, routing/interface/MTU/DNS options, rechecking, and a reviewable plan.
+- Replace the unclear missing-target error with an inline SSH host picker that saves the user's Remote-SSH alias and continues startup.
+- Add an APT and sudo sidebar section with one-click copy actions for update, install, persistent proxy setup, and removal without relying on `sudo -E`.
+- Show the exact generated shell command in a hover tooltip for every APT copy action.
+
 ## 0.1.4
 
 - Refine the Activity Bar icon and use the clear laptop-to-server tunnel design for the Marketplace icon.

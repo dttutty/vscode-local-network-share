@@ -1,6 +1,7 @@
 import { ChildProcessByStdio, spawn } from 'node:child_process';
 import { Readable } from 'node:stream';
 import * as vscode from 'vscode';
+import { LocalHttpProxy } from './localHttpProxy';
 import { sanitizeTarget } from './remoteTarget';
 
 type SshProcess = ChildProcessByStdio<null, Readable, Readable>;
@@ -11,14 +12,16 @@ export interface TunnelState {
   phase: TunnelPhase;
   target?: string;
   remotePort?: number;
+  remoteHttpPort?: number;
   message?: string;
 }
 
-interface TunnelConfiguration {
+export interface TunnelConfiguration {
   sshPath: string;
   sshTarget: string;
   sshConfigFile?: string;
   remotePort: number;
+  httpProxyRemotePort: number;
   connectTimeoutSeconds: number;
   injectHttpProxyVariables: boolean;
 }
@@ -29,6 +32,7 @@ export class TunnelManager implements vscode.Disposable {
   private expectedStop = false;
   private operationId = 0;
   private state: TunnelState = { phase: 'idle' };
+  private readonly httpProxy = new LocalHttpProxy();
 
   readonly onDidChangeState = this.stateEmitter.event;
 
@@ -59,6 +63,16 @@ export class TunnelManager implements vscode.Disposable {
       throw new Error('The remote proxy port must be an integer between 1024 and 65535.');
     }
     if (
+      !Number.isInteger(configuration.httpProxyRemotePort)
+      || configuration.httpProxyRemotePort < 1024
+      || configuration.httpProxyRemotePort > 65535
+    ) {
+      throw new Error('The remote HTTP proxy port must be an integer between 1024 and 65535.');
+    }
+    if (configuration.httpProxyRemotePort === configuration.remotePort) {
+      throw new Error('The SOCKS5 and HTTP proxy ports must be different.');
+    }
+    if (
       !Number.isInteger(configuration.connectTimeoutSeconds)
       || configuration.connectTimeoutSeconds < 3
       || configuration.connectTimeoutSeconds > 120
@@ -68,15 +82,48 @@ export class TunnelManager implements vscode.Disposable {
 
     const currentOperation = ++this.operationId;
     this.expectedStop = false;
-    this.setState({ phase: 'starting', target, remotePort: configuration.remotePort });
+    this.setState({
+      phase: 'starting',
+      target,
+      remotePort: configuration.remotePort,
+      remoteHttpPort: configuration.httpProxyRemotePort,
+    });
 
-    const args = buildSshArguments(configuration, target);
+    let localHttpPort: number;
+    try {
+      localHttpPort = await this.httpProxy.start();
+      this.output.appendLine(`[http-proxy] Listening locally at http://127.0.0.1:${localHttpPort}.`);
+    } catch (error) {
+      this.setState({
+        phase: 'error',
+        target,
+        remotePort: configuration.remotePort,
+        remoteHttpPort: configuration.httpProxyRemotePort,
+        message: 'Could not start the local HTTP CONNECT proxy.',
+      });
+      throw new Error(`Could not start the local HTTP CONNECT proxy: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    const args = buildSshArguments(configuration, target, localHttpPort);
     this.output.appendLine(`[tunnel] Starting ${configuration.sshPath} ${formatArgumentsForLog(args)}`);
 
-    const child = spawn(configuration.sshPath, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
+    let child: SshProcess;
+    try {
+      child = spawn(configuration.sshPath, args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+    } catch (error) {
+      await this.httpProxy.stop();
+      this.setState({
+        phase: 'error',
+        target,
+        remotePort: configuration.remotePort,
+        remoteHttpPort: configuration.httpProxyRemotePort,
+        message: 'Could not launch the local SSH client.',
+      });
+      throw new Error(`Could not launch the local SSH client: ${error instanceof Error ? error.message : String(error)}`);
+    }
     this.process = child;
 
     child.stdout.setEncoding('utf8');
@@ -102,7 +149,8 @@ export class TunnelManager implements vscode.Disposable {
       };
       const onStderr = (chunk: string | Buffer) => {
         startupOutput = `${startupOutput}${chunk.toString()}`.slice(-16_384);
-        if (/remote forward success/iu.test(startupOutput)) {
+        const successfulForwards = startupOutput.match(/remote forward success/giu)?.length ?? 0;
+        if (successfulForwards >= 2) {
           settle('running');
         }
       };
@@ -125,6 +173,7 @@ export class TunnelManager implements vscode.Disposable {
     });
 
     if (currentOperation !== this.operationId) {
+      await this.httpProxy.stop();
       return;
     }
 
@@ -133,20 +182,32 @@ export class TunnelManager implements vscode.Disposable {
         child.kill('SIGTERM');
       }
       this.process = undefined;
+      await this.httpProxy.stop();
       this.clearProxyEnvironment();
       this.setState({
         phase: 'error',
         target,
         remotePort: configuration.remotePort,
+        remoteHttpPort: configuration.httpProxyRemotePort,
         message: 'SSH exited before the tunnel became ready. Open the Local Network Share log for details.',
       });
       throw new Error('Could not establish the SSH reverse tunnel. Open the extension log for details.');
     }
 
     child.once('exit', (code, signal) => this.handleUnexpectedExit(child, code, signal));
-    this.applyProxyEnvironment(configuration.remotePort, configuration.injectHttpProxyVariables);
-    this.setState({ phase: 'active', target, remotePort: configuration.remotePort });
+    this.applyProxyEnvironment(
+      configuration.remotePort,
+      configuration.httpProxyRemotePort,
+      configuration.injectHttpProxyVariables,
+    );
+    this.setState({
+      phase: 'active',
+      target,
+      remotePort: configuration.remotePort,
+      remoteHttpPort: configuration.httpProxyRemotePort,
+    });
     this.output.appendLine(`[tunnel] Active. Remote SOCKS5 endpoint: socks5h://127.0.0.1:${configuration.remotePort}`);
+    this.output.appendLine(`[tunnel] Active. Remote HTTP endpoint: http://127.0.0.1:${configuration.httpProxyRemotePort}`);
   }
 
   async stop(): Promise<void> {
@@ -157,6 +218,7 @@ export class TunnelManager implements vscode.Disposable {
     const child = this.process;
     if (!child || child.exitCode !== null) {
       this.process = undefined;
+      await this.httpProxy.stop();
       this.setState({ phase: 'idle' });
       return;
     }
@@ -185,12 +247,14 @@ export class TunnelManager implements vscode.Disposable {
     if (this.process === child) {
       this.process = undefined;
     }
+    await this.httpProxy.stop();
     this.setState({ phase: 'idle' });
     this.output.appendLine('[tunnel] Stopped.');
   }
 
   dispose(): void {
     this.clearProxyEnvironment();
+    void this.httpProxy.stop();
     if (this.process?.exitCode === null) {
       this.expectedStop = true;
       this.process.kill('SIGTERM');
@@ -209,6 +273,7 @@ export class TunnelManager implements vscode.Disposable {
     }
     this.process = undefined;
     this.clearProxyEnvironment();
+    void this.httpProxy.stop();
 
     if (this.expectedStop) {
       this.setState({ phase: 'idle' });
@@ -221,14 +286,19 @@ export class TunnelManager implements vscode.Disposable {
     void vscode.window.showWarningMessage(`${message} Open the Local Network Share log for details.`);
   }
 
-  private applyProxyEnvironment(port: number, injectHttpProxyVariables: boolean): void {
-    const proxyUrl = `socks5h://127.0.0.1:${port}`;
-    this.environment.replace('ALL_PROXY', proxyUrl);
-    this.environment.replace('all_proxy', proxyUrl);
+  private applyProxyEnvironment(
+    socksPort: number,
+    httpPort: number,
+    injectHttpProxyVariables: boolean,
+  ): void {
+    const socksProxyUrl = `socks5h://127.0.0.1:${socksPort}`;
+    this.environment.replace('ALL_PROXY', socksProxyUrl);
+    this.environment.replace('all_proxy', socksProxyUrl);
 
     if (injectHttpProxyVariables) {
+      const httpProxyUrl = `http://127.0.0.1:${httpPort}`;
       for (const variable of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) {
-        this.environment.replace(variable, proxyUrl);
+        this.environment.replace(variable, httpProxyUrl);
       }
     }
 
@@ -254,7 +324,11 @@ export class TunnelManager implements vscode.Disposable {
   }
 }
 
-export function buildSshArguments(configuration: TunnelConfiguration, target: string): string[] {
+export function buildSshArguments(
+  configuration: TunnelConfiguration,
+  target: string,
+  localHttpPort: number,
+): string[] {
   const args = [
     '-v',
     '-N',
@@ -275,7 +349,13 @@ export function buildSshArguments(configuration: TunnelConfiguration, target: st
     args.push('-F', configuration.sshConfigFile);
   }
 
-  args.push('-R', `127.0.0.1:${configuration.remotePort}`, target);
+  args.push(
+    '-R',
+    `127.0.0.1:${configuration.remotePort}`,
+    '-R',
+    `127.0.0.1:${configuration.httpProxyRemotePort}:127.0.0.1:${localHttpPort}`,
+    target,
+  );
   return args;
 }
 

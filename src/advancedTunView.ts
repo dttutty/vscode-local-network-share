@@ -120,11 +120,14 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
     .danger { border-color: var(--vscode-inputValidation-warningBorder); background: var(--vscode-inputValidation-warningBackground); }
     .danger strong { color: var(--vscode-inputValidation-warningForeground); }
     .requirements { display: grid; gap: 10px; }
-    .requirement { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--vscode-widget-border); }
+    .requirement { padding: 10px 0; border-bottom: 1px solid var(--vscode-widget-border); }
     .requirement:last-child { border-bottom: 0; }
+    .requirement-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .requirement-detail { margin-top: 6px; color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.45; }
     .status { font-size: 12px; white-space: nowrap; }
     .ok { color: var(--vscode-testing-iconPassed); }
     .missing { color: var(--vscode-testing-iconFailed); }
+    .warning { color: var(--vscode-editorWarning-foreground); }
     .unknown { color: var(--vscode-descriptionForeground); }
     label { display: block; margin: 14px 0 6px; font-weight: 600; }
     select, input[type='text'], input[type='number'] { box-sizing: border-box; width: 100%; padding: 7px 9px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 2px; }
@@ -212,10 +215,50 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
     const vscode = acquireVsCodeApi();
     let state = ${initialState};
     const requirements = [
-      ['Administrator access', value => value && (value.sudoAccess === 'member' || value.sudoAccess === 'passwordless')],
-      ['TUN device support', value => value && value.tunDevice],
-      ['Proxy helper (tun2socks)', value => value && value.tun2socks],
-      ['Networking tools', value => value && value.ipCommand],
+      {
+        label: 'Administrator access',
+        test: value => value && (value.sudoAccess === 'member' || value.sudoAccess === 'passwordless'),
+        warning: value => value && value.sudoAccess === 'unknown',
+        status: value => value.sudoAccess === 'unknown' ? 'Manual check' : 'Not available',
+        pending: 'Checks whether this account can perform the privileged setup required by Advanced TUN.',
+        detail: value => value.sudoAccess === 'passwordless'
+          ? 'Passwordless sudo is available.'
+          : value.sudoAccess === 'member'
+            ? 'This account belongs to an administrator group; sudo may still ask for a password.'
+            : value.sudoAccess === 'unknown'
+              ? 'This does not mean you lack sudo. Password-protected sudo, custom sudoers rules, and LDAP/AD groups cannot be confirmed non-interactively. Run sudo -v in a terminal to verify.'
+              : 'The sudo command was not found. Ask the server administrator to install or provide administrator access.',
+      },
+      {
+        label: 'TUN device support',
+        test: value => value && value.tunDevice,
+        warning: () => false,
+        status: () => 'Unavailable',
+        pending: 'Checks whether the kernel exposes the /dev/net/tun device.',
+        detail: value => value.tunDevice
+          ? '/dev/net/tun is available.'
+          : '/dev/net/tun was not found. The server or kernel must have TUN support enabled.',
+      },
+      {
+        label: 'Proxy helper (tun2socks)',
+        test: value => value && value.tun2socks,
+        warning: () => false,
+        status: () => 'Not installed',
+        pending: 'Checks for the helper that converts TUN traffic to the local SOCKS5 proxy.',
+        detail: value => value.tun2socks
+          ? 'tun2socks is available in PATH.'
+          : 'tun2socks was not found in PATH. Normal SOCKS5 and HTTP proxy sharing still works; only Advanced TUN needs this helper.',
+      },
+      {
+        label: 'Networking tools',
+        test: value => value && value.ipCommand,
+        warning: () => false,
+        status: () => 'Not installed',
+        pending: 'Checks for the Linux ip command used to create interfaces and routes.',
+        detail: value => value.ipCommand
+          ? 'The ip networking command is available.'
+          : 'The ip command was not found. Install your distribution\'s iproute2 package before using Advanced TUN.',
+      },
     ];
     const safety = document.getElementById('safety');
     const copyPlan = document.getElementById('copyPlan');
@@ -231,12 +274,15 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
         element.className = 'step' + (index === activeIndex ? ' active' : (index < activeIndex ? ' complete' : ''));
         element.setAttribute('aria-current', index === activeIndex ? 'step' : 'false');
       });
+      const allReady = state.capabilities && requirements.every(item => item.test(state.capabilities));
       document.getElementById('connectionStatus').textContent = state.checking
         ? 'Checking ' + (state.target || 'the selected server') + '…'
         : state.sharingActive
           ? 'Sharing with ' + (state.target || 'the selected server') + ' through SOCKS5 port ' + state.socksPort + '.'
           : state.capabilities
-            ? 'Check complete. Review the results, then start sharing.'
+            ? allReady
+              ? 'Check complete. The server is ready for Advanced TUN setup.'
+              : 'Check complete. Review the explanations below before continuing.'
             : state.workflowStage === 'stop'
               ? 'Sharing is stopped. Run Check to begin again.'
               : 'Check the remote server before starting network sharing.';
@@ -252,17 +298,24 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
       start.className = state.workflowStage === 'start' ? '' : 'secondary';
       stop.className = state.workflowStage === 'stop' ? '' : 'secondary';
       const container = document.getElementById('requirements');
-      container.replaceChildren(...requirements.map(([label, test]) => {
+      container.replaceChildren(...requirements.map(item => {
         const row = document.createElement('div');
         row.className = 'requirement';
+        const main = document.createElement('div');
+        main.className = 'requirement-main';
         const name = document.createElement('span');
-        name.textContent = label;
+        name.textContent = item.label;
         const status = document.createElement('span');
         const known = Boolean(state.capabilities);
-        const passed = known && test(state.capabilities);
-        status.className = 'status ' + (known ? (passed ? 'ok' : 'missing') : 'unknown');
-        status.textContent = known ? (passed ? 'Ready' : 'Needs attention') : 'Not checked';
-        row.append(name, status);
+        const passed = known && item.test(state.capabilities);
+        const warning = known && item.warning(state.capabilities);
+        status.className = 'status ' + (known ? (passed ? 'ok' : (warning ? 'warning' : 'missing')) : 'unknown');
+        status.textContent = known ? (passed ? 'Ready' : item.status(state.capabilities)) : 'Not checked';
+        const detail = document.createElement('div');
+        detail.className = 'requirement-detail';
+        detail.textContent = known ? item.detail(state.capabilities) : item.pending;
+        main.append(name, status);
+        row.append(main, detail);
         return row;
       }));
       if (state.error) showNotice(state.error, true);

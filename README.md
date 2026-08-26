@@ -96,6 +96,8 @@ The extension changes the environment of newly created VS Code integrated termin
 
 The extension can perform a non-interactive, read-only check for sudo membership and relevant Linux capabilities before sharing starts. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.
 
+Because the readiness check never prompts for a password, password-protected sudo, custom sudoers rules, and LDAP/AD administrator groups may be shown as **Manual check**. This does not mean the account lacks sudo access; run `sudo -v` in the remote terminal to verify it. Each readiness result includes a visible explanation and next step.
+
 The main status view contains **Open Advanced TUN Setup…**. After an explicit physical/BMC-access warning, it expands a custom Webview directly inside the Local Network Share sidebar instead of opening an editor tab. The sidebar shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
 
 ## Security

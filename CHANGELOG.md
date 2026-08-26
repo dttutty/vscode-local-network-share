@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.8
+
+- Replace vague Advanced TUN readiness failures with specific status labels, visible explanations, impact, and next steps.
+- Treat password-protected, custom sudoers, and LDAP/AD sudo access as a manual verification warning instead of incorrectly implying that administrator access is absent.
+
 ## 0.1.7
 
 - Move the custom Advanced TUN workflow into a collapsible Sidebar Webview instead of opening a separate editor tab.

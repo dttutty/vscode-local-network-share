@@ -100,6 +100,11 @@ host…**，或直接启动共享，然后输入 Remote-SSH 中选择的同一�
 能力，绝不会请求或保存 sudo 密码。**APT and sudo** 区域会提供显式代理命令，
 仍需由用户检查后自行粘贴执行，扩展不会自动运行这些 sudo 命令。
 
+由于准备状态检测绝不会弹出密码输入，受密码保护的 sudo、自定义 sudoers 规则
+以及 LDAP/AD 管理员组可能显示为 **Manual check**。这不代表账户没有 sudo
+权限；可以在远端终端运行 `sudo -v` 手动确认。每项检测结果都会显示具体解释
+和下一步建议。
+
 主状态视图保留 **Open Advanced TUN Setup…**。用户明确确认拥有物理访问或
 BMC/IPMI/iDRAC/iLO 等带外管理能力后，会直接在 Local Network Share 侧栏中
 展开自定义 Webview，而不是新开编辑器标签页。侧栏顶部以醒目的

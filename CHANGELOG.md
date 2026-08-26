@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.15
+
+- Rewrite the English and Chinese README files as concise guides focused on the problem, quick start, proxy coverage, requirements, and TUN safety.
+- Shorten the Marketplace summary to state the extension's purpose directly.
+
 ## 0.2.14
 
 - Remove the artificial Remote - SSH 0.126.0 minimum-version gate. The extension requires a working Remote-SSH workspace but does not use the `terminalRemoteResolver` proposed API.

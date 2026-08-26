@@ -285,6 +285,10 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
           <span class="badge typical covered">Usually covered</span>
         </div>
         <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">Hugging Face Hub (hf)</div><div class="description">Reads HTTP_PROXY and HTTPS_PROXY. The current hf command replaces the deprecated huggingface-cli; Xet/CDN downloads may need a longer timeout.</div></div>
+          <span class="badge typical covered">Usually covered</span>
+        </div>
+        <div class="row" data-coverage="active">
           <div class="item-copy"><div class="item-title">Existing terminals</div><div class="description">Reopen them or copy the environment manually.</div></div>
           <button class="link badge manual" data-command="localNetworkShare.copyProxyEnvironment">Action needed</button>
         </div>

@@ -5,7 +5,7 @@
 这个扩展主要面向网络受限的内网服务器和计算节点：服务器可以通过 SSH
 连接，但由于出口控制、防火墙、DNS 限制或网络隔离，无法访问开发所需的
 外部资源。常见情况包括无法访问 GitHub、APT 软件源、pip/PyPI、Conda
-频道、npm Registry、文档网站或其他软件源。
+频道、Hugging Face 模型和数据集、npm Registry、文档网站或其他软件源。
 
 如果你的 laptop 可以通过 VPN、局域网或互联网访问这些资源，本扩展可以
 把 laptop 的网络连接共享给 VS Code Remote-SSH 打开的 Linux/macOS 主机。
@@ -68,6 +68,7 @@ SOCKS5h，HTTP 相关变量使用 HTTP 端点。代理环境变量并不是所�
 | [Cargo](https://doc.rust-lang.org/cargo/reference/config.html#httpproxy) | ✅ | Cargo 通过 `HTTP_PROXY`、`HTTPS_PROXY` 或 `CARGO_HTTP_PROXY` 接受 libcurl 代理语法。测试：`cargo search serde --limit 1`。 |
 | [pip](https://pip.pypa.io/en/stable/user_guide/#using-a-proxy-server) | ✅ | pip 会读取 `http_proxy` 和 `https_proxy`，它们现在指向 HTTP 端点。测试：`python -m pip index versions pip`。 |
 | [Conda](https://docs.conda.io/projects/conda/en/stable/user-guide/configuration/settings.html#proxy-servers-configure-conda-for-use-behind-a-proxy-server) | ✅ | Conda 会读取 `HTTP_PROXY` 和 `HTTPS_PROXY`，它们现在使用官方说明的 HTTP 代理形式。测试：`conda search python`。 |
+| [Hugging Face Hub CLI（`hf`）](https://huggingface.co/docs/huggingface_hub/en/guides/cli) | ✅ | 当前 `huggingface_hub` 使用 `HTTP_PROXY` 和 `HTTPS_PROXY`；`hf` 已取代弃用的 `huggingface-cli`。不下载文件的测试：`hf download HuggingFaceH4/ultrachat_200k --repo-type dataset --dry-run`。Hub 文件可能跳转到 Xet/CDN 域名；大型下载较慢时可尝试 `HF_HUB_DOWNLOAD_TIMEOUT=30`。如果只有 Xet 传输失败，可用 `HF_HUB_DISABLE_XET=1` 请求普通 HTTP 回退，但超大文件仍可能必须使用 Xet。 |
 | [Docker build/run](https://docs.docker.com/engine/cli/proxy/) | ⚠️ | 需要把变量传进构建或容器，例如 `docker build --build-arg HTTP_PROXY --build-arg HTTPS_PROXY .`。容器还需要能访问远端主机的回环代理，因此可能需要把 `127.0.0.1` 换成容器可达的主机地址。 |
 | [Docker pull](https://docs.docker.com/engine/daemon/proxy/) | ⚠️ | 拉取镜像的是 `dockerd`，不是当前终端进程。daemon 需要单独的特权代理配置并重启；仅在本地政策允许这种临时配置时才应指向 HTTP 端点。 |
 | [GNU Wget](https://www.gnu.org/software/wget/manual/html_node/Proxies.html) | ✅ | GNU Wget 支持 `http_proxy` 和 `https_proxy`，它们现在指向 HTTP 端点。测试：`wget -O- https://example.com/`。 |
@@ -131,13 +132,13 @@ daemon、systemd、cron 和忽略代理变量的应用会明确标为未接管�
 
 主状态视图提供 **TUN mode**，点击后直接切换到 Local Network Share Sidebar
 Webview 内的自定义页面，不会新开编辑器标签页，也不会重复弹出模态警告。每次
-进入时只显示物理访问或 BMC/IPMI/iDRAC/iLO 等恢复能力的风险提示和
-**I acknowledge** 按钮；确认后黄色提示消失，再显示高级控制。页面顶部以醒目的
-**Check → Start → Stop** 流程展示并高亮当前阶段，同时使用卡片展示易懂的
-准备状态；路由隔离、网卡名、MTU、DNS 和启动选项默认折叠，需要时再展开。
-高级 TUN 不提供命令面板入口，也绝不会自动启用。**Prepare Start TUN** 和
-**Prepare Stop TUN** 会在远端终端中预填一条可检查的单行命令，但不会代替用户
-按 Enter；用户需要检查并亲自执行，sudo 密码也只会由远端终端请求。修改共享
+进入时只显示物理访问或 BMC/IPMI/iDRAC/iLO 等恢复能力的风险提示和居中的
+**I acknowledge** 按钮；确认后黄色提示消失，再显示单页高级控制。进入页面会
+自动检查服务器准备状态，**Recheck** 可以重新检查，**Options** 默认折叠。
+**Start** 和 **Stop** 会在远端终端中预填对应的可检查单行命令，但不会代替用户
+按 Enter；Start 会在需要时先启用 Basic sharing。用户需要检查并亲自执行，
+sudo 密码也只会由远端终端请求。高级 TUN 不提供命令面板入口，也绝不会自动
+启用。修改共享
 服务器的默认路由可能导致 SSH 断线并影响其他用户，因此页面默认推荐 network
 namespace，并明确把全局路由标记为高风险。
 

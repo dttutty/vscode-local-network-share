@@ -1,8 +1,20 @@
 # Remote Local Network Share
 
-Share the network access of the computer running VS Code with a Linux/macOS host opened through VS Code Remote-SSH. The extension creates a loopback-only reverse SOCKS5 tunnel and injects proxy variables into newly created integrated terminals.
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-This is useful when a remote development server needs to reach resources available only through your laptop's VPN, local network, or internet connection.
+This extension is primarily designed for restricted internal servers and compute
+nodes that are reachable through SSH but cannot access required external
+resources because of egress controls, firewall rules, DNS restrictions, or an
+isolated network. Typical blocked resources include GitHub, APT repositories,
+pip/PyPI, Conda channels, npm registries, documentation sites, and other software
+sources.
+
+When your laptop can access those resources through its VPN, local network, or
+internet connection, the extension shares that connectivity with a Linux/macOS
+host opened through VS Code Remote-SSH. It creates a loopback-only reverse SOCKS5
+tunnel and injects proxy variables into newly created integrated terminals. Use
+it only when authorized and in accordance with your organization's network
+policies.
 
 ## Requirements
 

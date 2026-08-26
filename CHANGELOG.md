@@ -7,6 +7,7 @@
 - Clarify that the final TUN step reviews and copies setup commands for manual execution instead of starting privileged network changes automatically.
 - Add **Prepare Start TUN** and **Prepare Stop TUN** buttons that place reviewed, non-auto-submitted commands into a remote terminal; include isolated namespace relays and SSH recovery-route preservation for global mode.
 - Require an open folder on the Remote-SSH target, with a clear sidebar warning and disabled Start button instead of prompting users in empty windows for an SSH alias.
+- Add an **Open Remote - SSH** action to version warnings so users can reach the VS Code extension page and update the dependency directly.
 
 ## 0.2.9
 

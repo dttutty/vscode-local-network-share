@@ -256,6 +256,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('localNetworkShare.showOutput', () => output.show()),
     vscode.commands.registerCommand('localNetworkShare.openSettings', openSettings),
+    vscode.commands.registerCommand('localNetworkShare.openRemoteSshExtension', async () => {
+      await vscode.commands.executeCommand(
+        'workbench.extensions.action.showExtensionsWithIds',
+        [REMOTE_SSH_EXTENSION_ID],
+      );
+    }),
   );
 
   void refreshPresentation();

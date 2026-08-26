@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- Render Basic mode and TUN mode inside one Sidebar Webview so tab switching no longer depends on hiding, recreating, or refocusing separate VS Code views.
+- Switch to TUN mode immediately without a redundant modal warning; the persistent risk warning and recovery-access acknowledgement remain inside the TUN interface.
+
 ## 0.2.2
 
 - Add a persistent Basic mode / TUN mode tab bar at the top of both sidebar interfaces.

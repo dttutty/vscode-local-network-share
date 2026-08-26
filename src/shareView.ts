@@ -6,6 +6,7 @@ import {
   createPersistentAptCommand,
   REMOVE_PERSISTENT_APT_PROXY_COMMAND,
 } from './aptCommands';
+import type { AdvancedTunViewContent } from './advancedTunView';
 import type { TunnelState } from './tunnelManager';
 
 interface ShareViewState {
@@ -44,18 +45,28 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
   private state = createShareViewState({ phase: 'idle' }, undefined, 17890, 17891, true);
+  private mode: 'basic' | 'tun' = 'basic';
+
+  constructor(private readonly advancedTun: AdvancedTunViewContent) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
     webviewView.webview.options = { enableScripts: true };
-    webviewView.webview.html = this.createHtml();
+    this.renderCurrentMode();
     this.disposables.push(
       webviewView.onDidDispose(() => {
         if (this.view === webviewView) {
+          this.advancedTun.detach(webviewView.webview);
           this.view = undefined;
         }
       }),
-      webviewView.webview.onDidReceiveMessage((message: unknown) => void this.handleMessage(message)),
+      webviewView.webview.onDidReceiveMessage((message: unknown) => {
+        if (this.mode === 'tun') {
+          void this.advancedTun.handleMessage(message);
+        } else {
+          void this.handleMessage(message);
+        }
+      }),
     );
   }
 
@@ -67,12 +78,40 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     injectHttpProxyVariables: boolean,
   ): void {
     this.state = createShareViewState(state, target, port, httpPort, injectHttpProxyVariables);
-    void this.view?.webview.postMessage({ type: 'state', state: this.state });
+    if (this.mode === 'basic') {
+      void this.view?.webview.postMessage({ type: 'state', state: this.state });
+    }
+  }
+
+  showBasic(): void {
+    this.mode = 'basic';
+    this.renderCurrentMode();
+  }
+
+  showTun(): void {
+    this.mode = 'tun';
+    this.renderCurrentMode();
   }
 
   dispose(): void {
+    if (this.view) {
+      this.advancedTun.detach(this.view.webview);
+    }
     while (this.disposables.length > 0) {
       this.disposables.pop()?.dispose();
+    }
+  }
+
+  private renderCurrentMode(): void {
+    if (!this.view) {
+      return;
+    }
+    if (this.mode === 'tun') {
+      this.advancedTun.attach(this.view.webview);
+    } else {
+      this.advancedTun.detach(this.view.webview);
+      this.view.webview.options = { enableScripts: true };
+      this.view.webview.html = this.createHtml();
     }
   }
 

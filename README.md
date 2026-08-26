@@ -102,11 +102,11 @@ The extension can perform a non-interactive, read-only check for sudo membership
 
 Because the readiness check never prompts for a password, password-protected sudo, custom sudoers rules, and LDAP/AD administrator groups may be shown as **Manual check**. This does not mean the account lacks sudo access; run `sudo -v` in the remote terminal to verify it. Each readiness result includes a visible explanation and next step.
 
-The main status view contains **Open Advanced TUN Setup…**. After an explicit physical/BMC-access warning, it expands a custom Webview directly inside the Local Network Share sidebar instead of opening an editor tab. The sidebar shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
+The main status view contains **TUN mode**, which switches directly to a custom Webview inside the Local Network Share sidebar instead of opening an editor tab or redundant modal. The TUN interface itself keeps the physical/BMC-access warning and recovery acknowledgement visible. It shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
 
 Opening Advanced TUN hides the main Network Sharing dashboard and switches the sidebar to the advanced interface. Selecting **Basic mode** restores the main dashboard. This is an interface switch only: an active proxy tunnel keeps running until **Stop sharing** is selected.
 
-Both sidebar interfaces have a **Basic mode / TUN mode** tab bar at the top. The active mode is highlighted, and selecting the other tab switches interfaces.
+Basic mode and TUN mode are two pages inside the same Sidebar Webview. Their persistent **Basic mode / TUN mode** tab bar highlights the active page, and selecting the other tab switches synchronously without destroying or recreating a VS Code view.
 
 ## Security
 

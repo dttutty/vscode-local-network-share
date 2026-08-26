@@ -20,11 +20,8 @@ export interface AdvancedTunViewCallbacks {
   checkRequirements(): Promise<void>;
 }
 
-export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
-  static readonly viewType = 'localNetworkShare.advancedTunView';
-
-  private view: vscode.WebviewView | undefined;
-  private readonly disposables: vscode.Disposable[] = [];
+export class AdvancedTunViewContent {
+  private webview: vscode.Webview | undefined;
   private state: AdvancedTunViewState;
 
   constructor(
@@ -34,36 +31,24 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
     this.state = state;
   }
 
-  resolveWebviewView(webviewView: vscode.WebviewView): void {
-    this.view = webviewView;
-    webviewView.webview.options = { enableScripts: true };
-    webviewView.webview.html = this.createHtml();
-    this.disposables.push(
-      webviewView.onDidDispose(() => {
-        if (this.view === webviewView) {
-          this.view = undefined;
-        }
-      }),
-      webviewView.webview.onDidReceiveMessage((message: unknown) => void this.handleMessage(message)),
-    );
+  attach(webview: vscode.Webview): void {
+    this.webview = webview;
+    webview.options = { enableScripts: true };
+    webview.html = this.createHtml();
   }
 
-  async reveal(): Promise<void> {
-    await vscode.commands.executeCommand(`${AdvancedTunViewProvider.viewType}.focus`);
+  detach(webview: vscode.Webview): void {
+    if (this.webview === webview) {
+      this.webview = undefined;
+    }
   }
 
   update(state: AdvancedTunViewState): void {
     this.state = state;
-    void this.view?.webview.postMessage({ type: 'state', state });
+    void this.webview?.postMessage({ type: 'state', state });
   }
 
-  dispose(): void {
-    while (this.disposables.length > 0) {
-      this.disposables.pop()?.dispose();
-    }
-  }
-
-  private async handleMessage(message: unknown): Promise<void> {
+  async handleMessage(message: unknown): Promise<void> {
     if (!message || typeof message !== 'object' || !('type' in message)) {
       return;
     }
@@ -84,10 +69,10 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
           socksPort: this.state.socksPort,
         });
         await vscode.env.clipboard.writeText(plan);
-        void this.view?.webview.postMessage({ type: 'notice', message: 'Setup plan copied to the clipboard.' });
+        void this.webview?.postMessage({ type: 'notice', message: 'Setup plan copied to the clipboard.' });
       }
     } catch (error) {
-      void this.view?.webview.postMessage({
+      void this.webview?.postMessage({
         type: 'notice',
         error: true,
         message: error instanceof Error ? error.message : String(error),

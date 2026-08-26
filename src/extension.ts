@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AdvancedTunViewProvider, type AdvancedTunViewState } from './advancedTunView';
+import { AdvancedTunViewContent, type AdvancedTunViewState } from './advancedTunView';
 import {
   createAptInstallCommand,
   createOneTimeAptCommand,
@@ -27,19 +27,13 @@ let advancedTunStopped = false;
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel('Local Network Share');
   const manager = new TunnelManager(output, context.environmentVariableCollection);
-  const viewProvider = new ShareViewProvider();
-  let advancedTunView: AdvancedTunViewProvider;
+  let viewProvider: ShareViewProvider;
+  let advancedTunView: AdvancedTunViewContent;
   tunnelManager = manager;
 
   context.subscriptions.push(
     output,
     manager,
-    viewProvider,
-    vscode.window.registerWebviewViewProvider(
-      ShareViewProvider.viewType,
-      viewProvider,
-      { webviewOptions: { retainContextWhenHidden: true } },
-    ),
   );
 
   const refreshPresentation = async () => {
@@ -66,24 +60,11 @@ export function activate(context: vscode.ExtensionContext): void {
     });
   };
 
-  const switchSidebarView = async (advanced: boolean) => {
-    await vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', advanced);
-    try {
-      await vscode.commands.executeCommand('workbench.view.extension.localNetworkShare');
-    } catch {
-      // The container may already be visible. Focusing the destination view below is sufficient.
-    }
-    await new Promise<void>((resolve) => setTimeout(resolve, 50));
-    await vscode.commands.executeCommand(
-      advanced ? AdvancedTunViewProvider.viewType + '.focus' : ShareViewProvider.viewType + '.focus',
-    );
-  };
-
-  advancedTunView = new AdvancedTunViewProvider(
+  advancedTunView = new AdvancedTunViewContent(
     createAdvancedTunViewState(manager, readSettings(), resolveSshTarget(readSettings().sshTarget)),
     {
       closeView: async () => {
-        await switchSidebarView(false);
+        viewProvider.showBasic();
       },
       startSharing: async () => {
         await vscode.commands.executeCommand('localNetworkShare.start');
@@ -109,13 +90,14 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
 
+  viewProvider = new ShareViewProvider(advancedTunView);
   context.subscriptions.push(
-    advancedTunView,
     vscode.window.registerWebviewViewProvider(
-      AdvancedTunViewProvider.viewType,
-      advancedTunView,
+      ShareViewProvider.viewType,
+      viewProvider,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
+    viewProvider,
   );
 
   context.subscriptions.push(
@@ -231,18 +213,10 @@ export function activate(context: vscode.ExtensionContext): void {
       );
     }),
     vscode.commands.registerCommand('localNetworkShare.openAdvancedTunSetup', async () => {
-      const confirmation = await vscode.window.showWarningMessage(
-        'Advanced TUN mode can change network routes. In rare cases, it may make this server unreachable over SSH. Continue only if you have physical access to the server or out-of-band management such as BMC/IPMI/iDRAC/iLO.',
-        { modal: true },
-        'I have physical/BMC access',
-      );
-      if (confirmation !== 'I have physical/BMC access') {
-        return;
-      }
       const settings = readSettings();
       const target = manager.currentState.target ?? resolveSshTarget(settings.sshTarget);
       advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
-      await switchSidebarView(true);
+      viewProvider.showTun();
     }),
     vscode.commands.registerCommand('localNetworkShare.chooseSshTarget', async () => {
       const target = await chooseAndSaveSshTarget();
@@ -254,7 +228,6 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('localNetworkShare.openSettings', openSettings),
   );
 
-  void vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', false);
   void refreshPresentation();
 
   if (vscode.env.remoteName === 'ssh-remote' && readSettings().autoStart) {

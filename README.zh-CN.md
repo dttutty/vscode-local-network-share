@@ -115,9 +115,9 @@ daemon、systemd、cron 和忽略代理变量的应用会明确标为未接管�
 权限；可以在远端终端运行 `sudo -v` 手动确认。每项检测结果都会显示具体解释
 和下一步建议。
 
-主状态视图保留 **Open Advanced TUN Setup…**。用户明确确认拥有物理访问或
-BMC/IPMI/iDRAC/iLO 等带外管理能力后，会直接在 Local Network Share 侧栏中
-展开自定义 Webview，而不是新开编辑器标签页。侧栏顶部以醒目的
+主状态视图提供 **TUN mode**，点击后直接切换到 Local Network Share 侧栏中的
+自定义 Webview，不会新开编辑器标签页，也不会重复弹出模态警告。物理访问或
+BMC/IPMI/iDRAC/iLO 等恢复能力的风险提示和确认仍始终显示在 TUN 界面中。侧栏顶部以醒目的
 **Check → Start → Stop** 流程展示并高亮当前阶段，同时使用卡片展示易懂的
 准备状态；路由隔离、网卡名、MTU、DNS 和设置计划默认折叠，需要时再展开。
 高级 TUN 不提供命令面板入口，也绝不会自动启用。当前版本不会请求
@@ -129,8 +129,9 @@ sudo 密码、创建 TUN 网卡、安装软件或修改路由/DNS。修改共享
 点击顶部 **Basic mode** 会恢复主控制台。这只是界面切换，已经运行的代理隧道会继续
 工作，直到用户明确选择 **Stop sharing**。
 
-两个侧栏界面顶部都提供 **Basic mode / TUN mode** 标签栏，当前模式会高亮，
-点击另一个标签即可切换界面。
+Basic mode 和 TUN mode 是同一个 Sidebar Webview 内的两个页面。顶部持续显示
+**Basic mode / TUN mode** 标签栏并高亮当前页面；点击标签会在内部同步切换，
+不再销毁或重新创建 VS Code View。
 
 ## 安全说明
 

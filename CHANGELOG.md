@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.9
+
+- Fix APT and sudo command cards so every generated command is displayed as visible text instead of showing only its short title.
+- Place the command cards under an expandable **Frequent commands** control inside the **APT and sudo** proxy-coverage item.
+- Add an explicit-proxy `sudo apt upgrade` command alongside update, install, persistent setup, and removal.
+
 ## 0.2.8
 
 - Explain the SSH reverse-tunnel and loopback-proxy design while sharing is inactive, then hide the explanation as soon as startup begins.

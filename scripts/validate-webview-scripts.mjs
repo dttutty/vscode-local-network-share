@@ -31,7 +31,9 @@ try {
   );
   const share = new ShareViewProvider(advanced);
 
-  validateInlineScripts('Basic mode', share.createHtml());
+  const basicHtml = share.createHtml();
+  validateInlineScripts('Basic mode', basicHtml);
+  validateAptCommandsAreRendered(basicHtml);
   validateInlineScripts('TUN mode', advanced.createHtml());
   process.stdout.write('Webview inline scripts are syntactically valid.\n');
 } finally {
@@ -48,6 +50,15 @@ function validateInlineScripts(name, html) {
       Function(script);
     } catch (error) {
       throw new Error(`${name} Webview script is invalid: ${error.message}`, { cause: error });
+    }
+  }
+}
+
+function validateAptCommandsAreRendered(html) {
+  for (const id of ['apt-update', 'apt-upgrade', 'apt-install', 'apt-persistent', 'apt-remove']) {
+    const assignment = `document.getElementById('${id}').textContent = state.aptCommands.`;
+    if (!html.includes(assignment)) {
+      throw new Error(`Basic mode does not render the ${id} command as visible text.`);
     }
   }
 }

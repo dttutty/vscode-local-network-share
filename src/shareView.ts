@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import {
   createAptInstallCommand,
+  createAptUpgradeCommand,
   createOneTimeAptCommand,
   createPersistentAptCommand,
   REMOVE_PERSISTENT_APT_PROXY_COMMAND,
@@ -18,6 +19,7 @@ interface ShareViewState {
   injectHttpProxyVariables: boolean;
   aptCommands: {
     update: string;
+    upgrade: string;
     install: string;
     persistent: string;
     remove: string;
@@ -30,6 +32,7 @@ const ALLOWED_COMMANDS = new Set([
   'localNetworkShare.restart',
   'localNetworkShare.copyProxyEnvironment',
   'localNetworkShare.copyAptUpdate',
+  'localNetworkShare.copyAptUpgrade',
   'localNetworkShare.copyAptInstall',
   'localNetworkShare.copyAptPersistentSetup',
   'localNetworkShare.copyAptPersistentRemoval',
@@ -183,6 +186,11 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     .coverage { display: grid; }
     .coverage .row { align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--vscode-widget-border); }
     .coverage .row:last-child { border-bottom: 0; }
+    .coverage-group { padding: 9px 0; border-bottom: 1px solid var(--vscode-widget-border); }
+    .coverage-group > .row { padding: 0; border-bottom: 0; }
+    .frequent-commands { margin-top: 10px; }
+    .frequent-commands summary { color: var(--vscode-textLink-foreground); font-size: 12px; font-weight: 600; }
+    .frequent-commands[open] summary { margin-bottom: 10px; }
     .item-title { font-weight: 600; }
     .item-copy { min-width: 0; }
     .apt-grid { display: grid; gap: 12px; }
@@ -248,9 +256,42 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
           <div class="item-copy"><div class="item-title">Existing terminals</div><div class="description">Reopen them or copy the environment manually.</div></div>
           <button class="link badge manual" data-command="localNetworkShare.copyProxyEnvironment">Action needed</button>
         </div>
-        <div class="row" data-coverage="active">
-          <div class="item-copy"><div class="item-title">APT and sudo</div><div class="description">sudo commonly removes proxy variables; APT needs an explicit option.</div></div>
-          <button class="link badge manual" data-command="localNetworkShare.copyAptUpdate">Manual setup</button>
+        <div class="coverage-group" data-coverage="active">
+          <div class="row">
+            <div class="item-copy"><div class="item-title">APT and sudo</div><div class="description">sudo commonly removes proxy variables; APT needs an explicit option.</div></div>
+            <span class="badge manual">Manual setup</span>
+          </div>
+          <details class="frequent-commands">
+            <summary>Frequent commands</summary>
+            <p class="description">Review a command, then use its copy icon. The extension never executes sudo automatically.</p>
+            <div class="apt-grid">
+              <div class="command-box">
+                <div class="command-title">One-time apt update</div>
+                ${copyIconButton('localNetworkShare.copyAptUpdate', 'Copy one-time apt update command')}
+                <pre><code id="apt-update"></code></pre>
+              </div>
+              <div class="command-box">
+                <div class="command-title">Upgrade installed packages</div>
+                ${copyIconButton('localNetworkShare.copyAptUpgrade', 'Copy APT upgrade command')}
+                <pre><code id="apt-upgrade"></code></pre>
+              </div>
+              <div class="command-box">
+                <div class="command-title">Install a package</div>
+                ${copyIconButton('localNetworkShare.copyAptInstall', 'Copy APT install command')}
+                <pre><code id="apt-install"></code></pre>
+              </div>
+              <div class="command-box">
+                <div class="command-title">Persistent APT proxy setup</div>
+                ${copyIconButton('localNetworkShare.copyAptPersistentSetup', 'Copy persistent APT proxy setup')}
+                <pre><code id="apt-persistent"></code></pre>
+              </div>
+              <div class="command-box">
+                <div class="command-title">Remove persistent setup</div>
+                ${copyIconButton('localNetworkShare.copyAptPersistentRemoval', 'Copy persistent APT proxy removal command')}
+                <pre><code id="apt-remove"></code></pre>
+              </div>
+            </div>
+          </details>
         </div>
         <div class="row" data-coverage="active">
           <div class="item-copy"><div class="item-title">Docker daemon, systemd, cron</div><div class="description">System services require their own proxy configuration.</div></div>
@@ -259,33 +300,6 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
         <div class="row" data-coverage="active">
           <div class="item-copy"><div class="item-title">Apps ignoring proxy variables</div><div class="description">Use application-specific settings or review Advanced TUN.</div></div>
           <button class="link badge unmanaged" data-command="localNetworkShare.openAdvancedTunSetup">Not managed</button>
-        </div>
-      </div>
-    </details>
-
-    <details id="aptSection" class="card" hidden>
-      <summary>APT and sudo commands</summary>
-      <p class="description">Review the exact command, then use the copy icon. Start sharing before running it; the extension never executes sudo automatically.</p>
-      <div class="apt-grid">
-        <div class="command-box">
-          <div class="command-title">One-time apt update</div>
-          ${copyIconButton('localNetworkShare.copyAptUpdate', 'Copy one-time apt update command')}
-          <pre><code id="apt-update"></code></pre>
-        </div>
-        <div class="command-box">
-          <div class="command-title">Install a package</div>
-          ${copyIconButton('localNetworkShare.copyAptInstall', 'Copy APT install command')}
-          <pre><code id="apt-install"></code></pre>
-        </div>
-        <div class="command-box">
-          <div class="command-title">Persistent APT proxy setup</div>
-          ${copyIconButton('localNetworkShare.copyAptPersistentSetup', 'Copy persistent APT proxy setup')}
-          <pre><code id="apt-persistent"></code></pre>
-        </div>
-        <div class="command-box">
-          <div class="command-title">Remove persistent setup</div>
-          ${copyIconButton('localNetworkShare.copyAptPersistentRemoval', 'Copy persistent APT proxy removal command')}
-          <pre><code id="apt-remove"></code></pre>
         </div>
       </div>
     </details>
@@ -322,23 +336,23 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       document.getElementById('stop').disabled = busy;
       document.getElementById('endpoints').style.display = active ? 'grid' : 'none';
       document.getElementById('coverageSection').hidden = !active;
-      document.getElementById('aptSection').hidden = !active;
       document.getElementById('socks').textContent = 'socks5h://127.0.0.1:' + state.remotePort;
       document.getElementById('http').textContent = 'http://127.0.0.1:' + state.httpPort;
       document.getElementById('coverageNote').textContent = active
         ? 'Inferred from the environment controlled by this extension; not live process inspection.'
         : 'Inactive. Start sharing to inject proxy settings into new VS Code terminals.';
       document.querySelectorAll('[data-coverage="active"]').forEach(element => {
-        element.style.display = active ? 'flex' : 'none';
+        element.hidden = !active;
       });
       document.querySelectorAll('.typical').forEach(element => {
         element.textContent = state.injectHttpProxyVariables ? 'Usually covered' : 'SOCKS support varies';
         element.className = 'badge typical ' + (state.injectHttpProxyVariables ? 'covered' : 'manual');
       });
-      document.getElementById('apt-update').value = state.aptCommands.update;
-      document.getElementById('apt-install').value = state.aptCommands.install;
-      document.getElementById('apt-persistent').value = state.aptCommands.persistent;
-      document.getElementById('apt-remove').value = state.aptCommands.remove;
+      document.getElementById('apt-update').textContent = state.aptCommands.update;
+      document.getElementById('apt-upgrade').textContent = state.aptCommands.upgrade;
+      document.getElementById('apt-install').textContent = state.aptCommands.install;
+      document.getElementById('apt-persistent').textContent = state.aptCommands.persistent;
+      document.getElementById('apt-remove').textContent = state.aptCommands.remove;
     }
 
     function runCommand(command) {
@@ -382,6 +396,7 @@ function createShareViewState(
     injectHttpProxyVariables,
     aptCommands: {
       update: createOneTimeAptCommand(httpPort),
+      upgrade: createAptUpgradeCommand(httpPort),
       install: createAptInstallCommand(httpPort),
       persistent: createPersistentAptCommand(httpPort),
       remove: REMOVE_PERSISTENT_APT_PROXY_COMMAND,

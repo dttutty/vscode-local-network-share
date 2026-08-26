@@ -94,9 +94,9 @@ The extension changes the environment of newly created VS Code integrated termin
 
 The main sidebar is a custom Webview dashboard rather than a native tree. It keeps connection state, target selection, Start/Stop, proxy endpoints, APT actions, and mode navigation together. Two compact View title icons in the upper-right open the log and settings; the TUN mode tab is the only Advanced TUN entry. Its expandable **Proxy coverage** section identifies new terminals and common environment-aware tools as usually covered, marks existing terminals and APT/sudo as requiring action, and clearly lists Docker daemon, systemd, cron, and applications that ignore proxy variables as unmanaged. Coverage is inferred from the environment controlled by the extension; it is not live inspection of running processes.
 
-The **APT and sudo commands** section displays each exact command in a non-editable rounded code card with a compact copy icon in the upper-right, so the command can be inspected before anything is pasted into a terminal.
+Inside the **APT and sudo** coverage item, expand **Frequent commands** to display each exact command in a non-editable rounded code card with a compact copy icon in the upper-right. This keeps the required manual actions beside their coverage explanation while allowing every command to be inspected before it is pasted into a terminal.
 
-**Proxy coverage** and **APT and sudo commands** appear only after network sharing reaches the active state. Both sections hide again when sharing stops, preventing commands from being used against an inactive proxy endpoint.
+**Proxy coverage**, including these APT commands, appears only after network sharing reaches the active state and hides again when sharing stops, preventing commands from being used against an inactive proxy endpoint.
 
 While sharing is inactive, the connection card explains the architecture: an additional SSH reverse tunnel exposes loopback-only proxy endpoints on the server, and new terminals receive their environment variables so traffic exits through the laptop network. The explanation hides as soon as startup begins.
 

@@ -96,6 +96,8 @@ The main sidebar is a custom Webview dashboard rather than a native tree. It kee
 
 The **APT and sudo commands** section displays each exact command in a non-editable rounded code card with a compact copy icon in the upper-right, so the command can be inspected before anything is pasted into a terminal.
 
+**Proxy coverage** and **APT and sudo commands** appear only after network sharing reaches the active state. Both sections hide again when sharing stops, preventing commands from being used against an inactive proxy endpoint.
+
 ## Sudo and advanced transparent mode
 
 The extension can perform a non-interactive, read-only check for sudo membership and relevant Linux capabilities before sharing starts. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.

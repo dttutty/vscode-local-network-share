@@ -148,6 +148,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     :root { color-scheme: light dark; }
     body { margin: 0; padding: 12px; color: var(--vscode-foreground); background: var(--vscode-sideBar-background); font-family: var(--vscode-font-family); }
     main { display: grid; gap: 12px; }
+    [hidden] { display: none !important; }
     .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; border: 1px solid var(--vscode-widget-border); border-radius: 7px; background: var(--vscode-editorWidget-background); }
     .mode-tab { padding: 7px 8px; color: var(--vscode-descriptionForeground); background: transparent; }
     .mode-tab:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
@@ -221,7 +222,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       </div>
     </section>
 
-    <details class="card" open>
+    <details id="coverageSection" class="card" open hidden>
       <summary>Proxy coverage</summary>
       <p id="coverageNote" class="description"></p>
       <div id="coverage" class="coverage">
@@ -256,7 +257,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       </div>
     </details>
 
-    <details class="card">
+    <details id="aptSection" class="card" hidden>
       <summary>APT and sudo commands</summary>
       <p class="description">Review the exact command, then use the copy icon. Start sharing before running it; the extension never executes sudo automatically.</p>
       <div class="apt-grid">
@@ -313,6 +314,8 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       document.getElementById('start').disabled = busy;
       document.getElementById('stop').disabled = busy;
       document.getElementById('endpoints').style.display = active ? 'grid' : 'none';
+      document.getElementById('coverageSection').hidden = !active;
+      document.getElementById('aptSection').hidden = !active;
       document.getElementById('socks').textContent = 'socks5h://127.0.0.1:' + state.remotePort;
       document.getElementById('http').textContent = 'http://127.0.0.1:' + state.httpPort;
       document.getElementById('coverageNote').textContent = active

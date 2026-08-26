@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.7
+
+- Hide Proxy coverage and APT/sudo commands until network sharing is active, and hide them again after sharing stops.
+
 ## 0.2.6
 
 - Present APT/sudo commands as non-editable rounded code cards with a compact copy icon in each card's upper-right corner.

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import {
   createAptInstallCommand,
+  createAptUpgradeCommand,
   createOneTimeAptCommand,
   createPersistentAptCommand,
   REMOVE_PERSISTENT_APT_PROXY_COMMAND,
@@ -18,6 +19,7 @@ interface ShareViewState {
   injectHttpProxyVariables: boolean;
   aptCommands: {
     update: string;
+    upgrade: string;
     install: string;
     persistent: string;
     remove: string;
@@ -30,6 +32,7 @@ const ALLOWED_COMMANDS = new Set([
   'localNetworkShare.restart',
   'localNetworkShare.copyProxyEnvironment',
   'localNetworkShare.copyAptUpdate',
+  'localNetworkShare.copyAptUpgrade',
   'localNetworkShare.copyAptInstall',
   'localNetworkShare.copyAptPersistentSetup',
   'localNetworkShare.copyAptPersistentRemoval',
@@ -268,6 +271,11 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
                 <pre><code id="apt-update"></code></pre>
               </div>
               <div class="command-box">
+                <div class="command-title">Upgrade installed packages</div>
+                ${copyIconButton('localNetworkShare.copyAptUpgrade', 'Copy APT upgrade command')}
+                <pre><code id="apt-upgrade"></code></pre>
+              </div>
+              <div class="command-box">
                 <div class="command-title">Install a package</div>
                 ${copyIconButton('localNetworkShare.copyAptInstall', 'Copy APT install command')}
                 <pre><code id="apt-install"></code></pre>
@@ -341,6 +349,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
         element.className = 'badge typical ' + (state.injectHttpProxyVariables ? 'covered' : 'manual');
       });
       document.getElementById('apt-update').textContent = state.aptCommands.update;
+      document.getElementById('apt-upgrade').textContent = state.aptCommands.upgrade;
       document.getElementById('apt-install').textContent = state.aptCommands.install;
       document.getElementById('apt-persistent').textContent = state.aptCommands.persistent;
       document.getElementById('apt-remove').textContent = state.aptCommands.remove;
@@ -387,6 +396,7 @@ function createShareViewState(
     injectHttpProxyVariables,
     aptCommands: {
       update: createOneTimeAptCommand(httpPort),
+      upgrade: createAptUpgradeCommand(httpPort),
       install: createAptInstallCommand(httpPort),
       persistent: createPersistentAptCommand(httpPort),
       remove: REMOVE_PERSISTENT_APT_PROXY_COMMAND,

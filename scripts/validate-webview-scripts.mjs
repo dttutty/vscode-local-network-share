@@ -55,7 +55,7 @@ function validateInlineScripts(name, html) {
 }
 
 function validateAptCommandsAreRendered(html) {
-  for (const id of ['apt-update', 'apt-install', 'apt-persistent', 'apt-remove']) {
+  for (const id of ['apt-update', 'apt-upgrade', 'apt-install', 'apt-persistent', 'apt-remove']) {
     const assignment = `document.getElementById('${id}').textContent = state.aptCommands.`;
     if (!html.includes(assignment)) {
       throw new Error(`Basic mode does not render the ${id} command as visible text.`);

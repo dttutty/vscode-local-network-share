@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { AdvancedTunViewContent, type AdvancedTunViewState } from './advancedTunView';
 import {
   createAptInstallCommand,
+  createAptUpgradeCommand,
   createOneTimeAptCommand,
   createPersistentAptCommand,
   REMOVE_PERSISTENT_APT_PROXY_COMMAND,
@@ -170,6 +171,11 @@ export function activate(context: vscode.ExtensionContext): void {
             command: createOneTimeAptCommand(httpProxyRemotePort),
           },
           {
+            label: 'Copy apt upgrade command',
+            description: 'Upgrades installed packages through the shared proxy',
+            command: createAptUpgradeCommand(httpProxyRemotePort),
+          },
+          {
             label: 'Copy persistent APT proxy setup',
             description: 'Creates /etc/apt/apt.conf.d/99local-network-share',
             command: createPersistentAptCommand(httpProxyRemotePort),
@@ -192,6 +198,12 @@ export function activate(context: vscode.ExtensionContext): void {
       await copyTerminalCommand(
         createOneTimeAptCommand(readSettings().httpProxyRemotePort),
         'One-time apt update command copied.',
+      );
+    }),
+    vscode.commands.registerCommand('localNetworkShare.copyAptUpgrade', async () => {
+      await copyTerminalCommand(
+        createAptUpgradeCommand(readSettings().httpProxyRemotePort),
+        'APT upgrade command copied.',
       );
     }),
     vscode.commands.registerCommand('localNetworkShare.copyAptInstall', async () => {

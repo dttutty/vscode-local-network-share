@@ -5,6 +5,11 @@ export function createOneTimeAptCommand(port: number): string {
   return `sudo apt -o Acquire::http::Proxy="${proxy}" -o Acquire::https::Proxy="${proxy}" update`;
 }
 
+export function createAptUpgradeCommand(port: number): string {
+  const proxy = `http://127.0.0.1:${port}`;
+  return `sudo apt -o Acquire::http::Proxy="${proxy}" -o Acquire::https::Proxy="${proxy}" upgrade`;
+}
+
 export function createAptInstallCommand(port: number): string {
   const proxy = `http://127.0.0.1:${port}`;
   return `sudo apt -o Acquire::http::Proxy="${proxy}" -o Acquire::https::Proxy="${proxy}" install PACKAGE_NAME`;

@@ -17,6 +17,11 @@ interface ShareViewState {
   remotePort: number;
   httpPort: number;
   injectHttpProxyVariables: boolean;
+  remoteSsh: {
+    compatible: boolean;
+    installedVersion?: string;
+    message: string;
+  };
   aptCommands: {
     update: string;
     upgrade: string;
@@ -47,7 +52,14 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
 
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
-  private state = createShareViewState({ phase: 'idle' }, undefined, 17890, 17891, true);
+  private state = createShareViewState(
+    { phase: 'idle' },
+    undefined,
+    17890,
+    17891,
+    true,
+    { compatible: false, message: 'Remote Local Network Share requires Remote - SSH 0.126.0 or newer.' },
+  );
   private mode: 'basic' | 'tun' = 'basic';
 
   constructor(private readonly advancedTun: AdvancedTunViewContent) {}
@@ -79,8 +91,9 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     port: number,
     httpPort: number,
     injectHttpProxyVariables: boolean,
+    remoteSsh: ShareViewState['remoteSsh'],
   ): void {
-    this.state = createShareViewState(state, target, port, httpPort, injectHttpProxyVariables);
+    this.state = createShareViewState(state, target, port, httpPort, injectHttpProxyVariables, remoteSsh);
     if (this.mode === 'basic') {
       void this.view?.webview.postMessage({ type: 'state', state: this.state });
     }
@@ -156,6 +169,8 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     .mode-tab { padding: 7px 8px; color: var(--vscode-descriptionForeground); background: transparent; }
     .mode-tab:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
     .mode-tab.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); font-weight: 600; }
+    .dependency-warning { padding: 10px; border: 1px solid var(--vscode-inputValidation-warningBorder); border-radius: 7px; color: var(--vscode-inputValidation-warningForeground); background: var(--vscode-inputValidation-warningBackground); font-size: 12px; line-height: 1.5; }
+    .dependency-warning strong { display: block; margin-bottom: 3px; }
     .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .hero { display: grid; gap: 12px; }
     .status-line, .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -211,6 +226,10 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       <button class="mode-tab active" aria-selected="true">Basic mode</button>
       <button class="mode-tab" aria-selected="false" data-command="localNetworkShare.openAdvancedTunSetup">TUN mode</button>
     </nav>
+    <div id="dependencyWarning" class="dependency-warning" role="alert" hidden>
+      <strong>Remote - SSH update required</strong>
+      <span id="dependencyMessage"></span>
+    </div>
     <section class="card hero">
       <div class="status-line">
         <span class="status-title">Network sharing</span>
@@ -328,11 +347,13 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       status.className = 'pill ' + presentation[1];
       document.getElementById('target').textContent = state.target || 'Select host…';
       document.getElementById('message').textContent = state.message || (active ? 'New integrated terminals receive the proxy environment.' : 'Start sharing to make the local network available on this SSH host.');
+      document.getElementById('dependencyWarning').hidden = state.remoteSsh.compatible;
+      document.getElementById('dependencyMessage').textContent = state.remoteSsh.message;
       document.getElementById('howItWorks').hidden = state.phase !== 'idle' && state.phase !== 'error';
       document.getElementById('start').style.display = state.phase === 'idle' || state.phase === 'error' ? '' : 'none';
       document.getElementById('stop').style.display = active || state.phase === 'stopping' ? '' : 'none';
       document.getElementById('restart').style.display = active ? '' : 'none';
-      document.getElementById('start').disabled = busy;
+      document.getElementById('start').disabled = busy || !state.remoteSsh.compatible;
       document.getElementById('stop').disabled = busy;
       document.getElementById('endpoints').style.display = active ? 'grid' : 'none';
       document.getElementById('coverageSection').hidden = !active;
@@ -384,6 +405,7 @@ function createShareViewState(
   port: number,
   configuredHttpPort: number,
   injectHttpProxyVariables: boolean,
+  remoteSsh: ShareViewState['remoteSsh'],
 ): ShareViewState {
   const remotePort = state.remotePort ?? port;
   const httpPort = state.remoteHttpPort ?? configuredHttpPort;
@@ -394,6 +416,7 @@ function createShareViewState(
     remotePort,
     httpPort,
     injectHttpProxyVariables,
+    remoteSsh,
     aptCommands: {
       update: createOneTimeAptCommand(httpPort),
       upgrade: createAptUpgradeCommand(httpPort),

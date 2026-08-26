@@ -5,6 +5,7 @@
 - Add a loopback-only HTTP CONNECT bridge alongside the SOCKS5 endpoint for tools such as pip, Conda, and Wget.
 - Detect remote sudo access with a non-interactive read-only check and provide reviewable APT setup/removal commands.
 - Put transparent TUN risk information, capability checks, and setup guidance in an expandable bottom-of-sidebar section protected by an explicit physical/BMC-access warning; remove its Command Palette entry.
+- Replace the unclear missing-target error with an inline SSH host picker that saves the user's Remote-SSH alias and continues startup.
 
 ## 0.1.4
 

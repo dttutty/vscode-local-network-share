@@ -49,16 +49,13 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       const settings = readSettings();
-      const target = resolveSshTarget(settings.sshTarget);
+      let target = resolveSshTarget(settings.sshTarget);
       if (!target) {
-        const action = await vscode.window.showErrorMessage(
-          'Could not infer the SSH destination. Set Local Network Share: SSH Target to the same alias used by Remote-SSH.',
-          'Open Settings',
-        );
-        if (action === 'Open Settings') {
-          await openSettings();
+        target = await chooseAndSaveSshTarget();
+        if (!target) {
+          return;
         }
-        return;
+        await refreshPresentation();
       }
 
       try {
@@ -152,6 +149,12 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       await refreshRemoteCapabilities(settings, target, output, viewProvider);
     }),
+    vscode.commands.registerCommand('localNetworkShare.chooseSshTarget', async () => {
+      const target = await chooseAndSaveSshTarget();
+      if (target) {
+        await refreshPresentation();
+      }
+    }),
     vscode.commands.registerCommand('localNetworkShare.showOutput', () => output.show()),
     vscode.commands.registerCommand('localNetworkShare.openSettings', openSettings),
   );
@@ -233,6 +236,37 @@ function createProxyEnvironmentScript(
 
 async function openSettings(): Promise<void> {
   await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:dttutty.remote-local-network-share');
+}
+
+async function chooseAndSaveSshTarget(): Promise<string | undefined> {
+  const current = readSettings().sshTarget;
+  const value = await vscode.window.showInputBox({
+    title: 'Choose the Remote-SSH host',
+    prompt: 'Enter the same SSH host or alias you selected in Remote-SSH. Local Network Share uses it to create the proxy tunnel.',
+    placeHolder: 'For example: markov or user@example.com',
+    value: current,
+    ignoreFocusOut: true,
+    validateInput: (candidate) => {
+      if (!candidate.trim()) {
+        return 'Enter an SSH host or config alias.';
+      }
+      if (!sanitizeTarget(candidate)) {
+        return 'Use a host name, SSH config alias, or user@host. Command-line options are not allowed.';
+      }
+      return undefined;
+    },
+  });
+  const target = value ? sanitizeTarget(value) : undefined;
+  if (!target) {
+    return undefined;
+  }
+
+  await vscode.workspace.getConfiguration('localNetworkShare').update(
+    'sshTarget',
+    target,
+    vscode.ConfigurationTarget.Global,
+  );
+  return target;
 }
 
 async function refreshRemoteCapabilities(

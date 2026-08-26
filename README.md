@@ -78,7 +78,7 @@ terminal and inspect `env | grep -i proxy`.
 
 ## SSH target detection
 
-The extension normally infers the SSH config alias from the current remote workspace URI. If this fails, set `localNetworkShare.sshTarget` to the same destination used by Remote-SSH, for example:
+The extension normally infers the SSH config alias from the current remote workspace URI. An empty Remote-SSH window may not expose the alias to extensions. In that case, select **SSH target: Select host…** in the sidebar or start sharing and enter the same host selected in Remote-SSH. The extension saves the choice for later use. You can also set `localNetworkShare.sshTarget` directly, for example:
 
 ```json
 {

@@ -183,8 +183,9 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
   private targetItem(): ShareItem {
     return new ShareItem(
       'SSH target',
-      this.state.target ?? this.target ?? 'Not detected',
+      this.state.target ?? this.target ?? 'Select host…',
       new vscode.ThemeIcon('remote'),
+      this.state.target || this.target ? undefined : 'localNetworkShare.chooseSshTarget',
     );
   }
 }

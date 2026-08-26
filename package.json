@@ -2,7 +2,7 @@
   "name": "remote-local-network-share",
   "displayName": "Remote Local Network Share",
   "description": "Let a network-restricted Remote-SSH host access external resources through your laptop.",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "publisher": "dttutty",
   "icon": "assets/publisher-logo.png",
   "license": "MIT",

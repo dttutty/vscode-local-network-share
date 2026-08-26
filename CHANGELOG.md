@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.16
+
+- Reduce the README files to a short project overview while keeping the OpenSSH reverse-forwarding architecture, proxy boundaries, requirements, and TUN warning.
+- Remove setup, troubleshooting, and development instructions that are unnecessary for Marketplace users.
+
 ## 0.2.15
 
 - Rewrite the English and Chinese README files as concise guides focused on the problem, quick start, proxy coverage, requirements, and TUN safety.

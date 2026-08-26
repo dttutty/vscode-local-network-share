@@ -21,6 +21,8 @@
 - 本地 OpenSSH 客户端需要支持动态远程端口转发。
 - 额外的隧道连接需要使用 SSH 密钥或 SSH Agent 认证。
 - 远端 SSH 服务器管理员需要启用 `AllowTcpForwarding`。
+- 高级隔离 TUN 模式还要求服务器具备 `tun2socks`、`iproute2`、`socat`、
+  `/dev/net/tun` 和 sudo 权限。
 
 ## 使用方法
 
@@ -130,11 +132,12 @@ Webview 内的自定义页面，不会新开编辑器标签页，也不会重复
 进入时只显示物理访问或 BMC/IPMI/iDRAC/iLO 等恢复能力的风险提示和
 **I acknowledge** 按钮；确认后黄色提示消失，再显示高级控制。页面顶部以醒目的
 **Check → Start → Stop** 流程展示并高亮当前阶段，同时使用卡片展示易懂的
-准备状态；路由隔离、网卡名、MTU、DNS 和设置计划默认折叠，需要时再展开。
-高级 TUN 不提供命令面板入口，也绝不会自动启用。当前版本不会请求
-sudo 密码、创建 TUN 网卡、安装软件或修改路由/DNS。修改共享服务器的默认
-路由可能导致 SSH 断线并影响其他用户，因此页面默认推荐 network namespace，
-并明确把全局路由标记为高风险。
+准备状态；路由隔离、网卡名、MTU、DNS 和启动选项默认折叠，需要时再展开。
+高级 TUN 不提供命令面板入口，也绝不会自动启用。**Prepare Start TUN** 和
+**Prepare Stop TUN** 会在远端终端中预填一条可检查的单行命令，但不会代替用户
+按 Enter；用户需要检查并亲自执行，sudo 密码也只会由远端终端请求。修改共享
+服务器的默认路由可能导致 SSH 断线并影响其他用户，因此页面默认推荐 network
+namespace，并明确把全局路由标记为高风险。
 
 打开 Advanced TUN 时，主 Network Sharing 控制台会隐藏，侧栏切换到高级界面；
 点击顶部 **Basic mode** 会恢复主控制台。这只是界面切换，已经运行的代理隧道会继续

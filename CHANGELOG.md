@@ -1,11 +1,17 @@
 # Changelog
 
+## 0.2.10
+
+- Require Remote - SSH 0.126.0 or newer at runtime, with an actionable sidebar warning and disabled sharing when the installed version is missing or too old.
+- Rewrite the TUN mode introduction in plain language to explain when the mode is useful and what it does.
+- Clarify that the final TUN step reviews and copies setup commands for manual execution instead of starting privileged network changes automatically.
+- Add **Prepare Start TUN** and **Prepare Stop TUN** buttons that place reviewed, non-auto-submitted commands into a remote terminal; include isolated namespace relays and SSH recovery-route preservation for global mode.
+
 ## 0.2.9
 
 - Fix APT and sudo command cards so every generated command is displayed as visible text instead of showing only its short title.
 - Place the command cards under an expandable **Frequent commands** control inside the **APT and sudo** proxy-coverage item.
 - Add an explicit-proxy `sudo apt upgrade` command alongside update, install, persistent setup, and removal.
-- Require Remote - SSH 0.126.0 or newer at runtime, with an actionable sidebar warning and disabled sharing when the installed version is missing or too old.
 
 ## 0.2.8
 

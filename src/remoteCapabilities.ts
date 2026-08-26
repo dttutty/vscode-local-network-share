@@ -9,6 +9,7 @@ export interface RemoteCapabilities {
   sudoAccess: SudoAccess;
   tunDevice: boolean;
   tun2socks: boolean;
+  socat: boolean;
   ipCommand: boolean;
 }
 
@@ -41,6 +42,7 @@ printf 'OS=%s\\n' "$(uname -s 2>/dev/null || printf unknown)"
 printf 'SUDO=%s\\n' "$sudo_access"
 if [ -c /dev/net/tun ]; then printf 'TUN=yes\\n'; else printf 'TUN=no\\n'; fi
 if command -v tun2socks >/dev/null 2>&1; then printf 'TUN2SOCKS=yes\\n'; else printf 'TUN2SOCKS=no\\n'; fi
+if command -v socat >/dev/null 2>&1; then printf 'SOCAT=yes\\n'; else printf 'SOCAT=no\\n'; fi
 if command -v ip >/dev/null 2>&1; then printf 'IP=yes\\n'; else printf 'IP=no\\n'; fi
 `.trim();
 
@@ -103,7 +105,7 @@ export async function probeRemoteCapabilities(
 
   const capabilities = parseRemoteCapabilities(stdout);
   output.appendLine(
-    `[capabilities] sudo=${capabilities.sudoAccess}, tun=${capabilities.tunDevice}, tun2socks=${capabilities.tun2socks}, ip=${capabilities.ipCommand}.`,
+    `[capabilities] sudo=${capabilities.sudoAccess}, tun=${capabilities.tunDevice}, tun2socks=${capabilities.tun2socks}, socat=${capabilities.socat}, ip=${capabilities.ipCommand}.`,
   );
   return capabilities;
 }
@@ -148,6 +150,7 @@ export function parseRemoteCapabilities(output: string): RemoteCapabilities {
     sudoAccess,
     tunDevice: values.get('TUN') === 'yes',
     tun2socks: values.get('TUN2SOCKS') === 'yes',
+    socat: values.get('SOCAT') === 'yes',
     ipCommand: values.get('IP') === 'yes',
   };
 }

@@ -139,6 +139,19 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       await vscode.window.showTextDocument(document, { preview: true });
     }),
+    vscode.commands.registerCommand('localNetworkShare.checkAdvancedTunRequirements', async () => {
+      if (!ensureRemoteSshWindow() || manager.currentState.phase !== 'active') {
+        void vscode.window.showInformationMessage('Start local network sharing before checking advanced TUN requirements.');
+        return;
+      }
+      const settings = readSettings();
+      const target = resolveSshTarget(settings.sshTarget);
+      if (!target) {
+        void vscode.window.showErrorMessage('Could not infer the SSH destination for the requirements check.');
+        return;
+      }
+      await refreshRemoteCapabilities(settings, target, output, viewProvider);
+    }),
     vscode.commands.registerCommand('localNetworkShare.showOutput', () => output.show()),
     vscode.commands.registerCommand('localNetworkShare.openSettings', openSettings),
   );
@@ -270,7 +283,7 @@ function createAdvancedTunGuide(capabilities: RemoteCapabilities | undefined, po
 
   return `# Advanced transparent TUN mode
 
-This mode is shown as a separate advanced action at the bottom of the Local Network Share sidebar and is never enabled automatically. Opening this guide requires an explicit risk confirmation.
+This mode is configured from the expandable Advanced TUN mode section at the bottom of the Local Network Share sidebar and is never enabled automatically. Opening this guide requires an explicit risk confirmation.
 
 A TUN interface can make applications that ignore proxy variables use the shared SOCKS5 endpoint at \`127.0.0.1:${port}\`. The risky part is changing the host's global routes or DNS: on a Remote-SSH or multi-user server, that can break the SSH session or affect other users.
 

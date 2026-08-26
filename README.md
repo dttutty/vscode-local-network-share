@@ -96,7 +96,7 @@ The extension changes the environment of newly created VS Code integrated termin
 
 After sharing starts, the extension performs a non-interactive, read-only check for sudo membership and relevant Linux capabilities. It never asks for or stores a sudo password. If sudo access is detected, the sidebar offers only **Configure APT for sudo**, which copies commands for you to review and paste yourself.
 
-Transparent TUN mode appears only as a separate advanced action at the bottom of the sidebar and is never enabled automatically. Before its guide opens, a modal warning requires the user to confirm physical access or out-of-band management such as BMC/IPMI/iDRAC/iLO. The same guide is available from **Local Network Share: Open Advanced Transparent TUN Guide** in the Command Palette. The extension does not create a TUN interface, install software, or change global routes or DNS. Changing a shared server's default route can disconnect SSH and affect other users, so any such setup remains manual and should preferably be isolated in a network namespace.
+Transparent TUN mode appears only in an expandable advanced section at the bottom of the sidebar and is never enabled automatically. Risk information, recovery requirements, capability results, rechecking, and the setup guide all live in that section; there is no Command Palette entry. Before the guide opens, a modal warning requires the user to confirm physical access or out-of-band management such as BMC/IPMI/iDRAC/iLO. The extension does not create a TUN interface, install software, or change global routes or DNS. Changing a shared server's default route can disconnect SSH and affect other users, so any such setup remains manual and should preferably be isolated in a network namespace.
 
 ## Security
 

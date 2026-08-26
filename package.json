@@ -47,8 +47,7 @@
     "onCommand:localNetworkShare.stop",
     "onCommand:localNetworkShare.restart",
     "onCommand:localNetworkShare.copyProxyEnvironment",
-    "onCommand:localNetworkShare.configureAptProxy",
-    "onCommand:localNetworkShare.showAdvancedTunGuide"
+    "onCommand:localNetworkShare.configureAptProxy"
   ],
   "contributes": {
     "commands": [
@@ -76,10 +75,6 @@
         "command": "localNetworkShare.configureAptProxy",
         "title": "Local Network Share: Configure APT for sudo",
         "icon": "$(package)"
-      },
-      {
-        "command": "localNetworkShare.showAdvancedTunGuide",
-        "title": "Local Network Share: Open Advanced Transparent TUN Guide"
       },
       {
         "command": "localNetworkShare.showOutput",

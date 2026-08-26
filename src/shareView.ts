@@ -27,7 +27,11 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
     return element;
   }
 
-  getChildren(): ShareItem[] {
+  getChildren(element?: ShareItem): ShareItem[] {
+    if (element) {
+      return element.children ?? [];
+    }
+
     const items: ShareItem[] = [this.statusItem(), this.targetItem()];
 
     if (this.state.phase === 'active') {
@@ -69,12 +73,7 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
     items.push(
       new ShareItem('Open log', undefined, new vscode.ThemeIcon('output'), 'localNetworkShare.showOutput'),
       new ShareItem('Settings', undefined, new vscode.ThemeIcon('gear'), 'localNetworkShare.openSettings'),
-      new ShareItem(
-        'Advanced TUN mode',
-        'Physical or BMC access recommended',
-        new vscode.ThemeIcon('warning'),
-        'localNetworkShare.showAdvancedTunGuide',
-      ),
+      this.advancedTunItem(),
     );
     return items;
   }
@@ -102,6 +101,61 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
         'Copy safe APT proxy commands',
         new vscode.ThemeIcon('package'),
         'localNetworkShare.configureAptProxy',
+      ),
+    ];
+  }
+
+  private advancedTunItem(): ShareItem {
+    const children = [
+      new ShareItem('Risk', 'May interrupt SSH access', new vscode.ThemeIcon('warning')),
+      new ShareItem('Recovery access', 'Physical access or BMC required', new vscode.ThemeIcon('shield')),
+      new ShareItem('Recommended routing', 'Isolated network namespace', new vscode.ThemeIcon('server-process')),
+      ...this.advancedCapabilityItems(),
+      new ShareItem(
+        'Open safety and setup guide',
+        'Requires explicit confirmation',
+        new vscode.ThemeIcon('book'),
+        'localNetworkShare.showAdvancedTunGuide',
+      ),
+    ];
+    return new ShareItem(
+      'Advanced TUN mode',
+      'Advanced settings',
+      new vscode.ThemeIcon('warning'),
+      undefined,
+      children,
+    );
+  }
+
+  private advancedCapabilityItems(): ShareItem[] {
+    if (this.capabilities.phase === 'checking') {
+      return [new ShareItem('Requirements', 'Checking…', new vscode.ThemeIcon('loading~spin'))];
+    }
+    if (this.capabilities.phase !== 'ready') {
+      return [new ShareItem(
+        'Check requirements',
+        'Start sharing first',
+        new vscode.ThemeIcon('search'),
+        this.state.phase === 'active' ? 'localNetworkShare.checkAdvancedTunRequirements' : 'localNetworkShare.start',
+      )];
+    }
+
+    const { capabilities } = this.capabilities;
+    const sudoLabel = capabilities.sudoAccess === 'passwordless'
+      ? 'Available without a prompt'
+      : capabilities.sudoAccess === 'member'
+        ? 'Available; password may be required'
+        : 'Not detected';
+    return [
+      new ShareItem('sudo access', sudoLabel, capabilityIcon(capabilities.sudoAccess === 'member' || capabilities.sudoAccess === 'passwordless')),
+      new ShareItem('/dev/net/tun', availabilityLabel(capabilities.tunDevice), capabilityIcon(capabilities.tunDevice)),
+      new ShareItem('tun2socks', availabilityLabel(capabilities.tun2socks), capabilityIcon(capabilities.tun2socks)),
+      new ShareItem('ip command', availabilityLabel(capabilities.ipCommand), capabilityIcon(capabilities.ipCommand)),
+      new ShareItem(
+        'Recheck requirements',
+        undefined,
+        new vscode.ThemeIcon('refresh'),
+        'localNetworkShare.checkAdvancedTunRequirements',
       ),
     ];
   }
@@ -141,12 +195,24 @@ class ShareItem extends vscode.TreeItem {
     description: string | undefined,
     icon: vscode.ThemeIcon,
     commandId?: string,
+    readonly children?: ShareItem[],
   ) {
-    super(label, vscode.TreeItemCollapsibleState.None);
+    super(
+      label,
+      children ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+    );
     this.description = description;
     this.iconPath = icon;
     if (commandId) {
       this.command = { command: commandId, title: label };
     }
   }
+}
+
+function availabilityLabel(available: boolean): string {
+  return available ? 'Available' : 'Not detected';
+}
+
+function capabilityIcon(available: boolean): vscode.ThemeIcon {
+  return new vscode.ThemeIcon(available ? 'pass-filled' : 'circle-slash');
 }

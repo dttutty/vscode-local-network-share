@@ -98,11 +98,13 @@ SOCKS5h，HTTP 相关变量使用 HTTP 端点。代理环境变量并不是所�
 能力，绝不会请求或保存 sudo 密码。检测到 sudo 权限时，侧栏只显示
 **Configure APT for sudo**，用于复制命令，仍需由用户检查后自行粘贴执行。
 
-透明 TUN 模式不会出现在侧栏，也绝不会自动启用。专家用户可以从命令面板
-打开 **Local Network Share: Open Advanced Transparent TUN Guide**。扩展不会
-创建 TUN 网卡、安装软件，也不会修改全局路由或 DNS。修改共享服务器的默认
-路由可能导致 SSH 断线并影响其他用户，因此相关操作保持为手动流程，且应优先
-隔离在 network namespace 中。
+透明 TUN 模式只会作为独立的高级入口出现在侧栏最下方，绝不会自动启用。
+打开指南前会显示模态风险警告，用户必须确认自己拥有服务器的物理访问能力，
+或 BMC/IPMI/iDRAC/iLO 等带外管理能力。专家用户也可以从命令面板打开
+**Local Network Share: Open Advanced Transparent TUN Guide**，此时同样需要
+确认。扩展不会创建 TUN 网卡、安装软件，也不会修改全局路由或 DNS。修改共享
+服务器的默认路由可能导致 SSH 断线并影响其他用户，因此相关操作保持为手动
+流程，且应优先隔离在 network namespace 中。
 
 ## 安全说明
 

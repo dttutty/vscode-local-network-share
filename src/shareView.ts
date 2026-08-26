@@ -69,6 +69,12 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
     items.push(
       new ShareItem('Open log', undefined, new vscode.ThemeIcon('output'), 'localNetworkShare.showOutput'),
       new ShareItem('Settings', undefined, new vscode.ThemeIcon('gear'), 'localNetworkShare.openSettings'),
+      new ShareItem(
+        'Advanced TUN mode',
+        'Physical or BMC access recommended',
+        new vscode.ThemeIcon('warning'),
+        'localNetworkShare.showAdvancedTunGuide',
+      ),
     );
     return items;
   }

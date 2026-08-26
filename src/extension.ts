@@ -125,6 +125,14 @@ export function activate(context: vscode.ExtensionContext): void {
       void vscode.window.showInformationMessage('APT proxy command copied. Paste it into the remote terminal when ready.');
     }),
     vscode.commands.registerCommand('localNetworkShare.showAdvancedTunGuide', async () => {
+      const confirmation = await vscode.window.showWarningMessage(
+        'Advanced TUN mode can change network routes. In rare cases, it may make this server unreachable over SSH. Continue only if you have physical access to the server or out-of-band management such as BMC/IPMI/iDRAC/iLO.',
+        { modal: true },
+        'I have physical/BMC access',
+      );
+      if (confirmation !== 'I have physical/BMC access') {
+        return;
+      }
       const document = await vscode.workspace.openTextDocument({
         language: 'markdown',
         content: createAdvancedTunGuide(lastCapabilities, readSettings().remotePort),
@@ -262,7 +270,7 @@ function createAdvancedTunGuide(capabilities: RemoteCapabilities | undefined, po
 
   return `# Advanced transparent TUN mode
 
-This mode is intentionally not shown in the Local Network Share sidebar and is never enabled automatically.
+This mode is shown as a separate advanced action at the bottom of the Local Network Share sidebar and is never enabled automatically. Opening this guide requires an explicit risk confirmation.
 
 A TUN interface can make applications that ignore proxy variables use the shared SOCKS5 endpoint at \`127.0.0.1:${port}\`. The risky part is changing the host's global routes or DNS: on a Remote-SSH or multi-user server, that can break the SSH session or affect other users.
 

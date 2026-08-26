@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AdvancedTunPanel, type AdvancedTunPanelState } from './advancedTunPanel';
+import { AdvancedTunViewProvider, type AdvancedTunViewState } from './advancedTunView';
 import {
   createAptInstallCommand,
   createOneTimeAptCommand,
@@ -28,7 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel('Local Network Share');
   const manager = new TunnelManager(output, context.environmentVariableCollection);
   const viewProvider = new ShareViewProvider();
-  let advancedTunPanel: AdvancedTunPanel | undefined;
+  let advancedTunView: AdvancedTunViewProvider;
   tunnelManager = manager;
 
   context.subscriptions.push(
@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const settings = readSettings();
     const target = resolveSshTarget(settings.sshTarget);
     viewProvider.update(manager.currentState, target, settings.remotePort);
-    advancedTunPanel?.update(createAdvancedTunPanelState(manager, settings, target));
+    advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
     await vscode.commands.executeCommand(
       'setContext',
       'localNetworkShare.running',
@@ -52,9 +52,45 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const runCapabilityCheck = async (settings: ReturnType<typeof readSettings>, target: string) => {
     await refreshRemoteCapabilities(settings, target, output, () => {
-      advancedTunPanel?.update(createAdvancedTunPanelState(manager, readSettings(), target));
+      advancedTunView.update(createAdvancedTunViewState(manager, readSettings(), target));
     });
   };
+
+  advancedTunView = new AdvancedTunViewProvider(
+    createAdvancedTunViewState(manager, readSettings(), resolveSshTarget(readSettings().sshTarget)),
+    {
+      startSharing: async () => {
+        await vscode.commands.executeCommand('localNetworkShare.start');
+      },
+      stopSharing: async () => {
+        await vscode.commands.executeCommand('localNetworkShare.stop');
+      },
+      checkRequirements: async () => {
+        if (!ensureRemoteSshWindow()) {
+          return;
+        }
+        const currentSettings = readSettings();
+        let currentTarget = manager.currentState.target ?? resolveSshTarget(currentSettings.sshTarget);
+        if (!currentTarget) {
+          currentTarget = await chooseAndSaveSshTarget();
+          if (!currentTarget) {
+            return;
+          }
+          await refreshPresentation();
+        }
+        await runCapabilityCheck(currentSettings, currentTarget);
+      },
+    },
+  );
+
+  context.subscriptions.push(
+    advancedTunView,
+    vscode.window.registerWebviewViewProvider(
+      AdvancedTunViewProvider.viewType,
+      advancedTunView,
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+  );
 
   context.subscriptions.push(
     manager.onDidChangeState(() => void refreshPresentation()),
@@ -103,7 +139,7 @@ export function activate(context: vscode.ExtensionContext): void {
       capabilityProbeError = undefined;
       advancedTunStopped = true;
       await manager.stop();
-      advancedTunPanel?.update(createAdvancedTunPanelState(manager, readSettings()));
+      advancedTunView.update(createAdvancedTunViewState(manager, readSettings()));
       void vscode.window.showInformationMessage('Local network sharing stopped. Open terminals keep their existing environment until closed.');
     }),
     vscode.commands.registerCommand('localNetworkShare.restart', async () => {
@@ -179,39 +215,8 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       const settings = readSettings();
       const target = manager.currentState.target ?? resolveSshTarget(settings.sshTarget);
-      if (advancedTunPanel) {
-        advancedTunPanel.update(createAdvancedTunPanelState(manager, settings, target));
-        advancedTunPanel.reveal();
-      } else {
-        advancedTunPanel = new AdvancedTunPanel(
-          createAdvancedTunPanelState(manager, settings, target),
-          {
-            startSharing: async () => {
-              await vscode.commands.executeCommand('localNetworkShare.start');
-            },
-            stopSharing: async () => {
-              await vscode.commands.executeCommand('localNetworkShare.stop');
-            },
-            checkRequirements: async () => {
-              if (!ensureRemoteSshWindow()) {
-                return;
-              }
-              const currentSettings = readSettings();
-              let currentTarget = manager.currentState.target ?? resolveSshTarget(currentSettings.sshTarget);
-              if (!currentTarget) {
-                currentTarget = await chooseAndSaveSshTarget();
-                if (!currentTarget) {
-                  return;
-                }
-                await refreshPresentation();
-              }
-              await runCapabilityCheck(currentSettings, currentTarget);
-            },
-          },
-          () => { advancedTunPanel = undefined; },
-        );
-        context.subscriptions.push(advancedTunPanel);
-      }
+      advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
+      await advancedTunView.reveal();
     }),
     vscode.commands.registerCommand('localNetworkShare.chooseSshTarget', async () => {
       const target = await chooseAndSaveSshTarget();
@@ -376,11 +381,11 @@ async function copyTerminalCommand(command: string, message: string): Promise<vo
   void vscode.window.showInformationMessage(`${message} Paste it into the remote terminal when ready.`);
 }
 
-function createAdvancedTunPanelState(
+function createAdvancedTunViewState(
   manager: TunnelManager,
   settings: ReturnType<typeof readSettings>,
   target?: string,
-): AdvancedTunPanelState {
+): AdvancedTunViewState {
   const resolvedTarget = manager.currentState.target ?? target;
   const capabilities = resolvedTarget && lastCapabilitiesTarget === resolvedTarget
     ? lastCapabilities

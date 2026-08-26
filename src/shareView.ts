@@ -74,7 +74,7 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
       new ShareItem('Settings', undefined, new vscode.ThemeIcon('gear'), 'localNetworkShare.openSettings'),
       new ShareItem(
         'Open Advanced TUN Setup…',
-        'Separate guided interface',
+        'Show in sidebar',
         new vscode.ThemeIcon('server-environment'),
         'localNetworkShare.openAdvancedTunSetup',
       ),

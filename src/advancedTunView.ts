@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import type { RemoteCapabilities } from './remoteCapabilities';
 import { createTunSetupPlan, validateTunSetupOptions } from './tunSettings';
 
-export interface AdvancedTunPanelState {
+export interface AdvancedTunViewState {
   workflowStage: 'check' | 'start' | 'stop';
   sharingActive: boolean;
   checking: boolean;
@@ -13,47 +13,47 @@ export interface AdvancedTunPanelState {
   error?: string;
 }
 
-export interface AdvancedTunPanelCallbacks {
+export interface AdvancedTunViewCallbacks {
   startSharing(): Promise<void>;
   stopSharing(): Promise<void>;
   checkRequirements(): Promise<void>;
 }
 
-export class AdvancedTunPanel implements vscode.Disposable {
-  private readonly panel: vscode.WebviewPanel;
+export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
+  static readonly viewType = 'localNetworkShare.advancedTunView';
+
+  private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
-  private state: AdvancedTunPanelState;
+  private state: AdvancedTunViewState;
 
   constructor(
-    state: AdvancedTunPanelState,
-    private readonly callbacks: AdvancedTunPanelCallbacks,
-    onDispose: () => void,
+    state: AdvancedTunViewState,
+    private readonly callbacks: AdvancedTunViewCallbacks,
   ) {
     this.state = state;
-    this.panel = vscode.window.createWebviewPanel(
-      'localNetworkShare.advancedTunSetup',
-      'Advanced TUN Setup',
-      vscode.ViewColumn.One,
-      { enableScripts: true, retainContextWhenHidden: true },
-    );
-    this.panel.iconPath = new vscode.ThemeIcon('server-environment');
-    this.panel.webview.html = this.createHtml();
+  }
+
+  resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.view = webviewView;
+    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.html = this.createHtml();
     this.disposables.push(
-      this.panel.onDidDispose(() => {
-        onDispose();
-        this.dispose();
+      webviewView.onDidDispose(() => {
+        if (this.view === webviewView) {
+          this.view = undefined;
+        }
       }),
-      this.panel.webview.onDidReceiveMessage((message: unknown) => void this.handleMessage(message)),
+      webviewView.webview.onDidReceiveMessage((message: unknown) => void this.handleMessage(message)),
     );
   }
 
-  reveal(): void {
-    this.panel.reveal(vscode.ViewColumn.One);
+  async reveal(): Promise<void> {
+    await vscode.commands.executeCommand(`${AdvancedTunViewProvider.viewType}.focus`);
   }
 
-  update(state: AdvancedTunPanelState): void {
+  update(state: AdvancedTunViewState): void {
     this.state = state;
-    void this.panel.webview.postMessage({ type: 'state', state });
+    void this.view?.webview.postMessage({ type: 'state', state });
   }
 
   dispose(): void {
@@ -81,10 +81,10 @@ export class AdvancedTunPanel implements vscode.Disposable {
           socksPort: this.state.socksPort,
         });
         await vscode.env.clipboard.writeText(plan);
-        void this.panel.webview.postMessage({ type: 'notice', message: 'Setup plan copied to the clipboard.' });
+        void this.view?.webview.postMessage({ type: 'notice', message: 'Setup plan copied to the clipboard.' });
       }
     } catch (error) {
-      void this.panel.webview.postMessage({
+      void this.view?.webview.postMessage({
         type: 'notice',
         error: true,
         message: error instanceof Error ? error.message : String(error),
@@ -104,19 +104,19 @@ export class AdvancedTunPanel implements vscode.Disposable {
   <title>Advanced TUN Setup</title>
   <style nonce="${nonce}">
     :root { color-scheme: light dark; }
-    body { margin: 0; padding: 32px; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); }
-    main { max-width: 880px; margin: 0 auto; }
-    h1 { margin: 0 0 8px; font-size: 26px; }
+    body { margin: 0; padding: 12px; color: var(--vscode-foreground); background: var(--vscode-sideBar-background); font-family: var(--vscode-font-family); }
+    main { width: 100%; }
+    h1 { margin: 0 0 6px; font-size: 20px; }
     h2 { margin: 0 0 16px; font-size: 16px; }
     p { line-height: 1.55; }
-    .subtitle { margin: 0 0 24px; color: var(--vscode-descriptionForeground); }
-    .workflow { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 24px 0; }
-    .step { min-width: 110px; padding: 11px 18px; color: var(--vscode-descriptionForeground); background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); border-radius: 999px; text-align: center; font-weight: 600; }
+    .subtitle { margin: 0 0 16px; color: var(--vscode-descriptionForeground); }
+    .workflow { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 18px 0; }
+    .step { flex: 1; min-width: 0; padding: 8px 4px; color: var(--vscode-descriptionForeground); background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); border-radius: 999px; text-align: center; font-size: 12px; font-weight: 600; }
     .step.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-focusBorder); box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
     .step.complete { color: var(--vscode-testing-iconPassed); border-color: var(--vscode-testing-iconPassed); }
-    .arrow { color: var(--vscode-descriptionForeground); font-size: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-    .card { padding: 20px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
+    .arrow { color: var(--vscode-descriptionForeground); font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .danger { border-color: var(--vscode-inputValidation-warningBorder); background: var(--vscode-inputValidation-warningBackground); }
     .danger strong { color: var(--vscode-inputValidation-warningForeground); }
     .requirements { display: grid; gap: 10px; }
@@ -142,11 +142,8 @@ export class AdvancedTunPanel implements vscode.Disposable {
     .global-warning { display: none; margin-top: 10px; color: var(--vscode-testing-iconFailed); }
     .notice { min-height: 20px; margin-top: 12px; color: var(--vscode-descriptionForeground); }
     .notice.error { color: var(--vscode-errorForeground); }
-    @media (max-width: 560px) {
-      body { padding: 20px; }
-      .workflow { gap: 5px; }
-      .step { min-width: 0; padding: 9px 12px; }
-    }
+    summary { cursor: pointer; font-weight: 600; }
+    details[open] summary { margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -180,8 +177,8 @@ export class AdvancedTunPanel implements vscode.Disposable {
         </div>
       </section>
 
-      <section class="card">
-        <h2>2. Setup options</h2>
+      <details class="card">
+        <summary>2. Setup options</summary>
         <label for="routing">Routing isolation</label>
         <select id="routing">
           <option value="namespace">Isolated network namespace (Recommended)</option>
@@ -200,15 +197,15 @@ export class AdvancedTunPanel implements vscode.Disposable {
           <option value="preserve">Keep current server DNS (Recommended)</option>
           <option value="tunnel">Route DNS through the tunnel (Advanced)</option>
         </select>
-      </section>
+      </details>
     </div>
 
-    <section class="card wide">
-      <h2>3. Review</h2>
+    <details class="card wide">
+      <summary>3. Review and copy</summary>
       <p class="note">This version prepares and copies a reviewable setup plan. It does not request a sudo password or automatically create an interface, change routes, or alter DNS.</p>
       <div class="actions"><button id="copyPlan" disabled>Copy setup plan</button></div>
       <div id="notice" class="notice" role="status"></div>
-    </section>
+    </details>
   </main>
 
   <script nonce="${nonce}">

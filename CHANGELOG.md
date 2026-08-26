@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.7
+
+- Move the custom Advanced TUN workflow into a collapsible Sidebar Webview instead of opening a separate editor tab.
+- Adapt the guided interface for the narrower sidebar and collapse setup/review details by default.
+
 ## 0.1.6
 
 - Add a prominent Check → Start → Stop workflow to the Advanced TUN page and highlight the current stage.

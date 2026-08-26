@@ -335,10 +335,10 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
         element.textContent = state.injectHttpProxyVariables ? 'Usually covered' : 'SOCKS support varies';
         element.className = 'badge typical ' + (state.injectHttpProxyVariables ? 'covered' : 'manual');
       });
-      document.getElementById('apt-update').value = state.aptCommands.update;
-      document.getElementById('apt-install').value = state.aptCommands.install;
-      document.getElementById('apt-persistent').value = state.aptCommands.persistent;
-      document.getElementById('apt-remove').value = state.aptCommands.remove;
+      document.getElementById('apt-update').textContent = state.aptCommands.update;
+      document.getElementById('apt-install').textContent = state.aptCommands.install;
+      document.getElementById('apt-persistent').textContent = state.aptCommands.persistent;
+      document.getElementById('apt-remove').textContent = state.aptCommands.remove;
     }
 
     function runCommand(command) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.9
+
+- Fix APT and sudo command cards so every generated command is displayed as visible text instead of showing only its short title.
+
 ## 0.2.8
 
 - Explain the SSH reverse-tunnel and loopback-proxy design while sharing is inactive, then hide the explanation as soon as startup begins.

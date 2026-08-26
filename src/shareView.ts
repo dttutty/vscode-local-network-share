@@ -51,7 +51,7 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
           new vscode.ThemeIcon('copy'),
           'localNetworkShare.copyProxyEnvironment',
         ),
-        ...this.capabilityItems(),
+        this.aptCommandsItem(),
         new ShareItem(
           'Stop sharing',
           undefined,
@@ -78,31 +78,39 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
     return items;
   }
 
-  private capabilityItems(): ShareItem[] {
-    if (this.capabilities.phase === 'checking') {
-      return [new ShareItem('Checking remote permissions…', undefined, new vscode.ThemeIcon('loading~spin'))];
-    }
-    if (this.capabilities.phase !== 'ready') {
-      return [];
-    }
-
-    const { capabilities } = this.capabilities;
-    if (capabilities.sudoAccess !== 'member' && capabilities.sudoAccess !== 'passwordless') {
-      return [];
-    }
-
-    const sudoDescription = capabilities.sudoAccess === 'passwordless'
-      ? 'Passwordless sudo detected'
-      : 'Password may be required';
-    return [
-      new ShareItem('Sudo access detected', sudoDescription, new vscode.ThemeIcon('shield')),
-      new ShareItem(
-        'Configure APT for sudo',
-        'Copy safe APT proxy commands',
-        new vscode.ThemeIcon('package'),
-        'localNetworkShare.configureAptProxy',
-      ),
-    ];
+  private aptCommandsItem(): ShareItem {
+    return new ShareItem(
+      'APT and sudo',
+      'Copy working commands',
+      new vscode.ThemeIcon('package'),
+      undefined,
+      [
+        new ShareItem(
+          'Copy one-time apt update',
+          'No persistent changes',
+          new vscode.ThemeIcon('copy'),
+          'localNetworkShare.copyAptUpdate',
+        ),
+        new ShareItem(
+          'Copy apt install command',
+          'Replace PACKAGE_NAME',
+          new vscode.ThemeIcon('copy'),
+          'localNetworkShare.copyAptInstall',
+        ),
+        new ShareItem(
+          'Copy persistent APT setup',
+          'Applies while sharing is active',
+          new vscode.ThemeIcon('copy'),
+          'localNetworkShare.copyAptPersistentSetup',
+        ),
+        new ShareItem(
+          'Copy persistent setup removal',
+          undefined,
+          new vscode.ThemeIcon('trash'),
+          'localNetworkShare.copyAptPersistentRemoval',
+        ),
+      ],
+    );
   }
 
   private advancedTunItem(): ShareItem {

@@ -7,6 +7,7 @@
 - Put transparent TUN risk information, capability checks, and setup guidance in an expandable bottom-of-sidebar section protected by an explicit physical/BMC-access warning; remove its Command Palette entry.
 - Replace the unclear missing-target error with an inline SSH host picker that saves the user's Remote-SSH alias and continues startup.
 - Simplify the Advanced TUN sidebar into a task-oriented readiness summary that shows only missing requirements and the next actions.
+- Add an APT and sudo sidebar section with one-click copy actions for update, install, persistent proxy setup, and removal without relying on `sudo -E`.
 
 ## 0.1.4
 

@@ -94,18 +94,18 @@ export function activate(context: vscode.ExtensionContext): void {
       void vscode.window.showInformationMessage('Proxy environment commands copied to the clipboard.');
     }),
     vscode.commands.registerCommand('localNetworkShare.configureAptProxy', async () => {
-      const { remotePort } = readSettings();
+      const { httpProxyRemotePort } = readSettings();
       const selection = await vscode.window.showQuickPick(
         [
           {
             label: 'Copy one-time apt update command',
             description: 'Uses the proxy for one sudo apt update only',
-            command: createOneTimeAptCommand(remotePort),
+            command: createOneTimeAptCommand(httpProxyRemotePort),
           },
           {
             label: 'Copy persistent APT proxy setup',
             description: 'Creates /etc/apt/apt.conf.d/99local-network-share',
-            command: createPersistentAptCommand(remotePort),
+            command: createPersistentAptCommand(httpProxyRemotePort),
           },
           {
             label: 'Copy APT proxy removal command',
@@ -120,6 +120,30 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       await vscode.env.clipboard.writeText(selection.command);
       void vscode.window.showInformationMessage('APT proxy command copied. Paste it into the remote terminal when ready.');
+    }),
+    vscode.commands.registerCommand('localNetworkShare.copyAptUpdate', async () => {
+      await copyTerminalCommand(
+        createOneTimeAptCommand(readSettings().httpProxyRemotePort),
+        'One-time apt update command copied.',
+      );
+    }),
+    vscode.commands.registerCommand('localNetworkShare.copyAptInstall', async () => {
+      await copyTerminalCommand(
+        createAptInstallCommand(readSettings().httpProxyRemotePort),
+        'APT install command copied. Replace PACKAGE_NAME before running it.',
+      );
+    }),
+    vscode.commands.registerCommand('localNetworkShare.copyAptPersistentSetup', async () => {
+      await copyTerminalCommand(
+        createPersistentAptCommand(readSettings().httpProxyRemotePort),
+        'Persistent APT proxy setup copied.',
+      );
+    }),
+    vscode.commands.registerCommand('localNetworkShare.copyAptPersistentRemoval', async () => {
+      await copyTerminalCommand(
+        'sudo rm -f /etc/apt/apt.conf.d/99local-network-share',
+        'Persistent APT proxy removal command copied.',
+      );
     }),
     vscode.commands.registerCommand('localNetworkShare.showAdvancedTunGuide', async () => {
       const confirmation = await vscode.window.showWarningMessage(
@@ -295,13 +319,23 @@ async function refreshRemoteCapabilities(
 }
 
 function createOneTimeAptCommand(port: number): string {
-  const proxy = `socks5h://127.0.0.1:${port}`;
+  const proxy = `http://127.0.0.1:${port}`;
   return `sudo apt -o Acquire::http::Proxy="${proxy}" -o Acquire::https::Proxy="${proxy}" update`;
 }
 
+function createAptInstallCommand(port: number): string {
+  const proxy = `http://127.0.0.1:${port}`;
+  return `sudo apt -o Acquire::http::Proxy="${proxy}" -o Acquire::https::Proxy="${proxy}" install PACKAGE_NAME`;
+}
+
 function createPersistentAptCommand(port: number): string {
-  const proxy = `socks5h://127.0.0.1:${port}`;
+  const proxy = `http://127.0.0.1:${port}`;
   return `printf '%s\\n' 'Acquire::http::Proxy "${proxy}";' 'Acquire::https::Proxy "${proxy}";' | sudo tee /etc/apt/apt.conf.d/99local-network-share >/dev/null`;
+}
+
+async function copyTerminalCommand(command: string, message: string): Promise<void> {
+  await vscode.env.clipboard.writeText(command);
+  void vscode.window.showInformationMessage(`${message} Paste it into the remote terminal when ready.`);
 }
 
 function createAdvancedTunGuide(capabilities: RemoteCapabilities | undefined, port: number): string {

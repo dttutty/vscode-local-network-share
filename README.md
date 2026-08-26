@@ -60,7 +60,7 @@ linked official documentation.
 | --- | --- | --- |
 | [curl](https://curl.se/docs/manpage.html) | ✅ | Honors the injected proxy variables and supports `socks5h://`. Test: `curl https://api.ipify.org`. |
 | [Git over HTTPS](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpproxy) | ✅ | Git uses curl proxy syntax and normally reads `http_proxy`, `https_proxy`, and `all_proxy`. Test: `git ls-remote https://github.com/git/git.git HEAD`. This does not proxy the SSH protocol used by a `git@github.com:...` remote. |
-| [APT](https://manpages.debian.org/unstable/apt/apt-transport-http.1.en.html#Proxy_Configuration) | ⚠️ | APT supports explicit proxy configuration, but `sudo` commonly removes terminal variables. When sudo access is detected, use **Configure APT for sudo** in the sidebar to copy a one-time, persistent, or removal command. |
+| [APT](https://manpages.debian.org/unstable/apt/apt-transport-http.1.en.html#Proxy_Configuration) | ⚠️ | APT supports explicit proxy configuration, but `sudo` commonly removes terminal variables. Expand **APT and sudo** in the sidebar to copy reliable one-time update/install commands or persistent setup/removal commands. These commands pass APT's proxy options explicitly instead of relying on `sudo -E`, which may be restricted by sudoers policy. |
 | [npm](https://docs.npmjs.com/cli/v11/using-npm/config/#https-proxy) | ✅ | Current npm honors `HTTP_PROXY` and `HTTPS_PROXY`. Test: `npm ping`. |
 | [Homebrew](https://docs.brew.sh/Manpage#using-homebrew-behind-a-proxy) | ✅ | Homebrew officially supports a SOCKS5 URL in `all_proxy`. Test: `brew update`. |
 | [uv](https://docs.astral.sh/uv/reference/environment/#all_proxy) | ✅ | Current uv reads `ALL_PROXY` for all network requests and includes [SOCKS support](https://github.com/astral-sh/uv/issues/7484). Test: `uv pip install --dry-run requests`. Upgrade uv if an old release rejects the URL. |
@@ -94,7 +94,7 @@ The extension changes the environment of newly created VS Code integrated termin
 
 ## Sudo and advanced transparent mode
 
-After sharing starts, the extension performs a non-interactive, read-only check for sudo membership and relevant Linux capabilities. It never asks for or stores a sudo password. If sudo access is detected, the sidebar offers only **Configure APT for sudo**, which copies commands for you to review and paste yourself.
+After sharing starts, the extension performs a non-interactive, read-only check for sudo membership and relevant Linux capabilities. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.
 
 Transparent TUN mode appears only in an expandable advanced section at the bottom of the sidebar and is never enabled automatically. Its summary shows how many requirements are missing; the expanded view shows only actionable missing items, a readiness check, and guided setup instead of exposing every low-level capability. There is no Command Palette entry. Before the guide opens, a modal warning requires the user to confirm physical access or out-of-band management such as BMC/IPMI/iDRAC/iLO. The extension does not create a TUN interface, install software, or change global routes or DNS. Changing a shared server's default route can disconnect SSH and affect other users, so any such setup remains manual and should preferably be isolated in a network namespace.
 

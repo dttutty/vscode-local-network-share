@@ -57,7 +57,7 @@ SOCKS5h，HTTP 相关变量使用 HTTP 端点。代理环境变量并不是所�
 | --- | --- | --- |
 | [curl](https://curl.se/docs/manpage.html) | ✅ | 会读取注入的代理变量，并支持 `socks5h://`。测试：`curl https://api.ipify.org`。 |
 | [Git HTTPS](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpproxy) | ✅ | Git 使用 curl 的代理语法，通常读取 `http_proxy`、`https_proxy` 和 `all_proxy`。测试：`git ls-remote https://github.com/git/git.git HEAD`。这不会代理 `git@github.com:...` remote 使用的 SSH 协议。 |
-| [APT](https://manpages.debian.org/unstable/apt/apt-transport-http.1.en.html#Proxy_Configuration) | ⚠️ | APT 支持显式代理配置，但 `sudo` 通常会清除终端变量。检测到 sudo 权限后，可使用侧栏中的 **Configure APT for sudo**，复制单次、持久或移除配置的命令。 |
+| [APT](https://manpages.debian.org/unstable/apt/apt-transport-http.1.en.html#Proxy_Configuration) | ⚠️ | APT 支持显式代理配置，但 `sudo` 通常会清除终端变量。展开侧栏中的 **APT and sudo**，可复制可靠的单次 update/install 命令，或持久配置与移除命令。这些命令会显式传入 APT 代理参数，不依赖可能被 sudoers 策略限制的 `sudo -E`。 |
 | [npm](https://docs.npmjs.com/cli/v11/using-npm/config/#https-proxy) | ✅ | 当前 npm 会读取 `HTTP_PROXY` 和 `HTTPS_PROXY`。测试：`npm ping`。 |
 | [Homebrew](https://docs.brew.sh/Manpage#using-homebrew-behind-a-proxy) | ✅ | Homebrew 官方支持在 `all_proxy` 中使用 SOCKS5 URL。测试：`brew update`。 |
 | [uv](https://docs.astral.sh/uv/reference/environment/#all_proxy) | ✅ | 当前 uv 会把 `ALL_PROXY` 用于所有网络请求，并已提供 [SOCKS 支持](https://github.com/astral-sh/uv/issues/7484)。测试：`uv pip install --dry-run requests`。旧版拒绝该 URL 时请升级 uv。 |
@@ -97,8 +97,8 @@ host…**，或直接启动共享，然后输入 Remote-SSH 中选择的同一�
 ## sudo 与高级透明模式
 
 共享启动后，扩展会以非交互、只读方式检查 sudo 成员身份以及相关 Linux
-能力，绝不会请求或保存 sudo 密码。检测到 sudo 权限时，侧栏只显示
-**Configure APT for sudo**，用于复制命令，仍需由用户检查后自行粘贴执行。
+能力，绝不会请求或保存 sudo 密码。**APT and sudo** 区域会提供显式代理命令，
+仍需由用户检查后自行粘贴执行，扩展不会自动运行这些 sudo 命令。
 
 透明 TUN 模式只会出现在侧栏最下方的可展开高级区域，绝不会自动启用。折叠
 标题会显示还缺少几项要求；展开后只显示需要处理的项目、重新检测和引导式设置，

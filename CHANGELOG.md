@@ -6,6 +6,7 @@
 - Detect remote sudo access with a non-interactive read-only check and provide reviewable APT setup/removal commands.
 - Put transparent TUN risk information, capability checks, and setup guidance in an expandable bottom-of-sidebar section protected by an explicit physical/BMC-access warning; remove its Command Palette entry.
 - Replace the unclear missing-target error with an inline SSH host picker that saves the user's Remote-SSH alias and continues startup.
+- Simplify the Advanced TUN sidebar into a task-oriented readiness summary that shows only missing requirements and the next actions.
 
 ## 0.1.4
 

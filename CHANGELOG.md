@@ -5,6 +5,7 @@
 - Fix APT and sudo command cards so every generated command is displayed as visible text instead of showing only its short title.
 - Place the command cards under an expandable **Frequent commands** control inside the **APT and sudo** proxy-coverage item.
 - Add an explicit-proxy `sudo apt upgrade` command alongside update, install, persistent setup, and removal.
+- Require Remote - SSH 0.126.0 or newer at runtime, with an actionable sidebar warning and disabled sharing when the installed version is missing or too old.
 
 ## 0.2.8
 

@@ -13,6 +13,11 @@ import {
   type RemoteCapabilityProbeConfiguration,
 } from './remoteCapabilities';
 import { parseRemoteSshTarget, sanitizeTarget } from './remoteTarget';
+import {
+  isVersionAtLeast,
+  MINIMUM_REMOTE_SSH_VERSION,
+  REMOTE_SSH_EXTENSION_ID,
+} from './remoteSshCompatibility';
 import { ShareViewProvider } from './shareView';
 import { TunnelManager } from './tunnelManager';
 import { determineTunWorkflowStage } from './tunSettings';
@@ -46,6 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
       settings.remotePort,
       settings.httpProxyRemotePort,
       settings.injectHttpProxyVariables,
+      getRemoteSshCompatibility(),
     );
     advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
     await vscode.commands.executeCommand(
@@ -108,7 +114,13 @@ export function activate(context: vscode.ExtensionContext): void {
         void refreshPresentation();
       }
     }),
+    vscode.extensions.onDidChange(() => void refreshPresentation()),
     vscode.commands.registerCommand('localNetworkShare.start', async () => {
+      const remoteSsh = getRemoteSshCompatibility();
+      if (!remoteSsh.compatible) {
+        void vscode.window.showErrorMessage(remoteSsh.message);
+        return;
+      }
       if (!ensureRemoteSshWindow()) {
         return;
       }
@@ -245,6 +257,21 @@ export function activate(context: vscode.ExtensionContext): void {
   if (vscode.env.remoteName === 'ssh-remote' && readSettings().autoStart) {
     setTimeout(() => void vscode.commands.executeCommand('localNetworkShare.start'), 500);
   }
+}
+
+function getRemoteSshCompatibility(): { compatible: boolean; installedVersion?: string; message: string } {
+  const extension = vscode.extensions.getExtension(REMOTE_SSH_EXTENSION_ID);
+  const installedVersion = typeof extension?.packageJSON?.version === 'string'
+    ? extension.packageJSON.version
+    : undefined;
+  const compatible = installedVersion !== undefined
+    && isVersionAtLeast(installedVersion, MINIMUM_REMOTE_SSH_VERSION);
+  const installedLabel = installedVersion ? `Installed version: ${installedVersion}.` : 'Remote - SSH is not installed.';
+  return {
+    compatible,
+    installedVersion,
+    message: `Remote Local Network Share requires Remote - SSH ${MINIMUM_REMOTE_SSH_VERSION} or newer. ${installedLabel}`,
+  };
 }
 
 export async function deactivate(): Promise<void> {

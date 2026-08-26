@@ -15,8 +15,9 @@
 
 ## 环境要求
 
-- 桌面版 VS Code 的 Remote-SSH 窗口。目前不支持 Dev Containers、WSL、
-  Codespaces 和浏览器版 VS Code。
+- 桌面版 VS Code 中的 Microsoft **Remote - SSH 0.126.0 或更高版本**。扩展会
+  检查已安装版本，不满足要求时会提示升级并禁用共享。目前不支持 Dev
+  Containers、WSL、Codespaces 和浏览器版 VS Code。
 - 本地 OpenSSH 客户端需要支持动态远程端口转发。
 - 额外的隧道连接需要使用 SSH 密钥或 SSH Agent 认证。
 - 远端 SSH 服务器管理员需要启用 `AllowTcpForwarding`。

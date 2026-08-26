@@ -7,3 +7,6 @@ tsconfig.json
 out/test/**
 *.vsix
 .gitignore
+assets/publisher-logo-source.png
+assets/publisher-logo-v2-source.png
+assets/publisher-logo-v2.png

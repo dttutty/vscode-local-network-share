@@ -85,6 +85,18 @@ npm run package
 
 Press `F5` in VS Code to launch an Extension Development Host.
 
+## Release branch builds
+
+Every push to the GitHub `release` branch runs
+`.github/workflows/release.yml`. The workflow installs locked dependencies,
+runs the test suite, packages the extension, and uploads
+`remote-local-network-share-latest.vsix` to the rolling
+`release-branch-latest` prerelease.
+
+The workflow uses GitHub's built-in token and does not require Marketplace or
+Azure credentials. The prerelease tag and VSIX asset are updated in place, so
+the download URL remains stable across release-branch builds.
+
 ## License
 
 MIT

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2
+
+- Add CI that tests and packages the extension on every push to the GitHub
+  `release` branch and uploads the VSIX to a rolling prerelease.
+
+## 0.1.1
+
+- Replace the extension icon with a clearer, letter-free network tunnel design.
+
 ## 0.1.0
 
 - Add an Explorer sidebar view for starting and stopping local network sharing.

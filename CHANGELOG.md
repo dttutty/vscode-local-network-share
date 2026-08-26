@@ -2,8 +2,9 @@
 
 ## 0.2.12
 
-- Simplify Advanced TUN into a single control page with automatic readiness checks, always-visible options, and compact Recheck, Start, and Stop actions.
+- Simplify Advanced TUN into a single control page with automatic readiness checks, collapsible options, and compact Recheck, Start, and Stop actions.
 - Remove the old Check → Start → Stop stage indicator and its unused workflow state.
+- Document and display proxy coverage for the current Hugging Face Hub `hf` CLI and legacy `huggingface-cli` dataset/model downloads.
 
 ## 0.2.11
 

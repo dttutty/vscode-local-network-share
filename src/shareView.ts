@@ -12,13 +12,15 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
   private state: TunnelState = { phase: 'idle' };
   private target: string | undefined;
   private port = 17890;
+  private injectHttpProxyVariables = true;
 
   readonly onDidChangeTreeData = this.changeEmitter.event;
 
-  update(state: TunnelState, target: string | undefined, port: number): void {
+  update(state: TunnelState, target: string | undefined, port: number, injectHttpProxyVariables: boolean): void {
     this.state = state;
     this.target = target;
     this.port = port;
+    this.injectHttpProxyVariables = injectHttpProxyVariables;
     this.changeEmitter.fire(undefined);
   }
 
@@ -39,11 +41,7 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
       items.push(
         new ShareItem('SOCKS5 proxy', proxyUrl, new vscode.ThemeIcon('radio-tower')),
         new ShareItem('HTTP proxy', httpProxyUrl, new vscode.ThemeIcon('globe')),
-        new ShareItem(
-          'New terminals use the proxy',
-          'Reopen existing terminals',
-          new vscode.ThemeIcon('terminal'),
-        ),
+        this.proxyCoverageItem(),
         new ShareItem(
           'Copy proxy environment',
           undefined,
@@ -66,6 +64,7 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
           new vscode.ThemeIcon('debug-start'),
           'localNetworkShare.start',
         ),
+        new ShareItem('Proxy coverage', 'Inactive', new vscode.ThemeIcon('circle-outline')),
       );
     }
 
@@ -117,6 +116,76 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
         ),
       ],
     );
+  }
+
+  private proxyCoverageItem(): ShareItem {
+    const typicalToolStatus = this.injectHttpProxyVariables
+      ? 'Usually covered'
+      : 'SOCKS support varies';
+    const typicalToolIcon = this.injectHttpProxyVariables
+      ? new vscode.ThemeIcon('pass-filled')
+      : new vscode.ThemeIcon('warning');
+    const item = new ShareItem(
+      'Proxy coverage',
+      'New terminals only',
+      new vscode.ThemeIcon('list-tree'),
+      undefined,
+      [
+        tooltipItem(
+          'New VS Code terminals',
+          'Proxy environment injected',
+          new vscode.ThemeIcon('pass-filled'),
+          'The extension injects proxy variables when a new integrated terminal is created. It does not modify terminals that were already open.',
+        ),
+        tooltipItem(
+          'curl, pip, uv, Conda',
+          typicalToolStatus,
+          typicalToolIcon,
+          this.environmentCoverageExplanation('These tools normally read standard proxy environment variables, but the extension cannot inspect whether each running process accepted them.'),
+        ),
+        tooltipItem(
+          'npm, Wget, Homebrew',
+          typicalToolStatus,
+          typicalToolIcon,
+          this.environmentCoverageExplanation('These tools normally support HTTP proxy environment variables. Per-tool configuration can override the injected values.'),
+        ),
+        tooltipItem(
+          'Existing terminals',
+          'Reopen or copy environment',
+          new vscode.ThemeIcon('warning'),
+          'Existing terminal processes keep their old environment. Reopen the terminal or use Copy proxy environment.',
+          'localNetworkShare.copyProxyEnvironment',
+        ),
+        tooltipItem(
+          'APT and sudo',
+          'Manual command required',
+          new vscode.ThemeIcon('warning'),
+          'sudo commonly removes proxy variables, and APT needs an explicit HTTP proxy option or configuration. Select this item to copy a safe command.',
+          'localNetworkShare.configureAptProxy',
+        ),
+        tooltipItem(
+          'Docker daemon, systemd, cron',
+          'Not managed',
+          new vscode.ThemeIcon('circle-slash'),
+          'System services do not inherit the integrated terminal environment and require their own proxy configuration.',
+        ),
+        tooltipItem(
+          'Apps ignoring proxy variables',
+          'Not managed',
+          new vscode.ThemeIcon('circle-slash'),
+          'Programs that ignore proxy settings need application-specific configuration or a separately reviewed Advanced TUN setup.',
+          'localNetworkShare.openAdvancedTunSetup',
+        ),
+      ],
+    );
+    item.tooltip = 'Coverage is inferred from the environment the extension controls; it is not live process inspection.';
+    return item;
+  }
+
+  private environmentCoverageExplanation(base: string): string {
+    return this.injectHttpProxyVariables
+      ? `${base} HTTP_PROXY, HTTPS_PROXY, and ALL_PROXY are enabled for new terminals.`
+      : `${base} HTTP proxy variables are disabled in settings, so only ALL_PROXY is injected and compatibility varies.`;
   }
 
   dispose(): void {
@@ -180,6 +249,18 @@ function copyCommandItem(
   const tooltip = new vscode.MarkdownString();
   tooltip.appendMarkdown('Copies this command:\n\n');
   tooltip.appendCodeblock(commandText, 'shell');
+  item.tooltip = tooltip;
+  return item;
+}
+
+function tooltipItem(
+  label: string,
+  description: string,
+  icon: vscode.ThemeIcon,
+  tooltip: string,
+  commandId?: string,
+): ShareItem {
+  const item = new ShareItem(label, description, icon, commandId);
   item.tooltip = tooltip;
   return item;
 }

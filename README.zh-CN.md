@@ -94,6 +94,11 @@ host…**，或直接启动共享，然后输入 Remote-SSH 中选择的同一�
 `/etc/environment`、systemd 服务、Docker daemon、Firewall 或透明路由。
 应用程序本身必须支持 SOCKS 代理 URL 或标准 HTTP 代理环境变量。
 
+主侧栏提供可展开的 **Proxy coverage** 区域：新终端和通常读取环境变量的常用
+工具会标为通常已覆盖；已有终端及 APT/sudo 会标为需要用户操作；Docker
+daemon、systemd、cron 和忽略代理变量的应用会明确标为未接管。覆盖状态根据
+扩展能够控制的环境推断，并不是对运行中进程的实时检测。
+
 ## sudo 与高级透明模式
 
 扩展可以在共享启动前，以非交互、只读方式检查 sudo 成员身份以及相关 Linux

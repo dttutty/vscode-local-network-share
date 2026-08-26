@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9
+
+- Add an expandable Proxy coverage section showing which common tools are usually covered in new terminals, which require manual configuration, and which are not managed.
+- Distinguish environment-based compatibility from live process inspection and account for the HTTP proxy variable setting.
+
 ## 0.1.8
 
 - Replace vague Advanced TUN readiness failures with specific status labels, visible explanations, impact, and next steps.

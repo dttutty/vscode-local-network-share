@@ -92,6 +92,8 @@ Jump hosts, identity files, usernames, ports, and other advanced options should 
 
 The extension changes the environment of newly created VS Code integrated terminals. It does not modify `/etc/environment`, systemd services, Docker daemon settings, firewall rules, or transparent system routing on the server. Applications must support SOCKS proxy URLs or the standard HTTP proxy environment variables.
 
+The main sidebar includes an expandable **Proxy coverage** section. It identifies new terminals and common environment-aware tools as usually covered, marks existing terminals and APT/sudo as requiring action, and clearly lists Docker daemon, systemd, cron, and applications that ignore proxy variables as unmanaged. Coverage is inferred from the environment controlled by the extension; it is not live inspection of running processes.
+
 ## Sudo and advanced transparent mode
 
 The extension can perform a non-interactive, read-only check for sudo membership and relevant Linux capabilities before sharing starts. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.

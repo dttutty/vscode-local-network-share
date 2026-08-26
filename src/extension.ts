@@ -41,7 +41,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const refreshPresentation = async () => {
     const settings = readSettings();
     const target = resolveSshTarget(settings.sshTarget);
-    viewProvider.update(manager.currentState, target, settings.remotePort);
+    viewProvider.update(
+      manager.currentState,
+      target,
+      settings.remotePort,
+      settings.injectHttpProxyVariables,
+    );
     advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
     await vscode.commands.executeCommand(
       'setContext',

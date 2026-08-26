@@ -1,10 +1,14 @@
 # Changelog
 
+## 0.2.13
+
+- Document and display proxy coverage for the current Hugging Face Hub `hf` CLI and legacy `huggingface-cli` dataset/model downloads.
+- Update the English and Chinese Advanced TUN documentation to match the current single-page controls.
+
 ## 0.2.12
 
 - Simplify Advanced TUN into a single control page with automatic readiness checks, collapsible options, and compact Recheck, Start, and Stop actions.
 - Remove the old Check → Start → Stop stage indicator and its unused workflow state.
-- Document and display proxy coverage for the current Hugging Face Hub `hf` CLI and legacy `huggingface-cli` dataset/model downloads.
 
 ## 0.2.11
 

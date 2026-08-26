@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Redesign the Activity Bar and Marketplace icons around the same laptop-to-1U-server connection motif.
+- Add an English and Chinese tool compatibility matrix for APT, npm, Conda, Docker, Homebrew, pip, uv, and other common clients.
+
 ## 0.1.3
 
 - Move Local Network Share from the Explorer into its own Activity Bar sidebar

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4
+
+- Replace the TUN risk checkbox with an I acknowledge safety gate; advanced controls remain hidden until acknowledged, then the warning card disappears.
+
 ## 0.2.3
 
 - Fix a TUN page inline-script syntax error that prevented all controls, including Basic mode, from registering click handlers.

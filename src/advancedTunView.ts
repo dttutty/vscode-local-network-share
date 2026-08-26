@@ -111,6 +111,7 @@ export class AdvancedTunViewContent {
     .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .danger { border-color: var(--vscode-inputValidation-warningBorder); background: var(--vscode-inputValidation-warningBackground); }
     .danger strong { color: var(--vscode-inputValidation-warningForeground); }
+    [hidden] { display: none !important; }
     .requirements { display: grid; gap: 10px; }
     .requirement { padding: 10px 0; border-bottom: 1px solid var(--vscode-widget-border); }
     .requirement:last-child { border-bottom: 0; }
@@ -124,8 +125,6 @@ export class AdvancedTunViewContent {
     label { display: block; margin: 14px 0 6px; font-weight: 600; }
     select, input[type='text'], input[type='number'] { box-sizing: border-box; width: 100%; padding: 7px 9px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 2px; }
     select:focus, input:focus { outline: 1px solid var(--vscode-focusBorder); }
-    .checkbox { display: flex; gap: 9px; align-items: flex-start; font-weight: 400; }
-    .checkbox input { margin-top: 3px; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
     button { padding: 7px 14px; border: 0; border-radius: 2px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); cursor: pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
@@ -150,21 +149,22 @@ export class AdvancedTunViewContent {
     <h1>Advanced TUN Setup</h1>
     <p class="subtitle">A guided planning page for applications that cannot use SOCKS5 or HTTP proxy settings.</p>
 
-    <nav class="workflow" aria-label="Setup progress">
-      <div id="stage-check" class="step">1. Check</div>
-      <span class="arrow" aria-hidden="true">→</span>
-      <div id="stage-start" class="step">2. Start</div>
-      <span class="arrow" aria-hidden="true">→</span>
-      <div id="stage-stop" class="step">3. Stop</div>
-    </nav>
-
-    <section class="card danger">
+    <section id="riskGate" class="card danger">
       <strong>⚠ This can interrupt SSH access.</strong>
       <p>Continue only when you can physically access the server or recover it through BMC, IPMI, iDRAC, or iLO.</p>
-      <label class="checkbox"><input id="safety" type="checkbox"> <span>I understand the risk and have physical or out-of-band recovery access.</span></label>
+      <div class="actions"><button id="acknowledge">I acknowledge</button></div>
     </section>
 
-    <div class="grid wide">
+    <div id="tunContent" hidden>
+      <nav class="workflow" aria-label="Setup progress">
+        <div id="stage-check" class="step">1. Check</div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div id="stage-start" class="step">2. Start</div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div id="stage-stop" class="step">3. Stop</div>
+      </nav>
+
+      <div class="grid wide">
       <section class="card">
         <h2>1. Server readiness</h2>
         <p id="connectionStatus" class="subtitle"></p>
@@ -197,14 +197,15 @@ export class AdvancedTunViewContent {
           <option value="tunnel">Route DNS through the tunnel (Advanced)</option>
         </select>
       </details>
-    </div>
+      </div>
 
-    <details class="card wide">
-      <summary>3. Review and copy</summary>
-      <p class="note">This version prepares and copies a reviewable setup plan. It does not request a sudo password or automatically create an interface, change routes, or alter DNS.</p>
-      <div class="actions"><button id="copyPlan" disabled>Copy setup plan</button></div>
-      <div id="notice" class="notice" role="status"></div>
-    </details>
+      <details class="card wide">
+        <summary>3. Review and copy</summary>
+        <p class="note">This version prepares and copies a reviewable setup plan. It does not request a sudo password or automatically create an interface, change routes, or alter DNS.</p>
+        <div class="actions"><button id="copyPlan">Copy setup plan</button></div>
+        <div id="notice" class="notice" role="status"></div>
+      </details>
+    </div>
   </main>
 
   <script nonce="${nonce}">
@@ -256,7 +257,6 @@ export class AdvancedTunViewContent {
           : 'The ip command was not found. Install the iproute2 package for your distribution before using Advanced TUN.',
       },
     ];
-    const safety = document.getElementById('safety');
     const copyPlan = document.getElementById('copyPlan');
     const routing = document.getElementById('routing');
     const globalWarning = document.getElementById('globalWarning');
@@ -324,13 +324,15 @@ export class AdvancedTunViewContent {
     }
 
     function updateControls() {
-      copyPlan.disabled = !safety.checked;
       globalWarning.style.display = routing.value === 'global' ? 'block' : 'none';
     }
 
-    safety.addEventListener('change', updateControls);
     routing.addEventListener('change', updateControls);
     document.getElementById('basicMode').addEventListener('click', () => vscode.postMessage({ type: 'closeView' }));
+    document.getElementById('acknowledge').addEventListener('click', () => {
+      document.getElementById('riskGate').hidden = true;
+      document.getElementById('tunContent').hidden = false;
+    });
     document.getElementById('startSharing').addEventListener('click', () => vscode.postMessage({ type: 'startSharing' }));
     document.getElementById('stopSharing').addEventListener('click', () => vscode.postMessage({ type: 'stopSharing' }));
     document.getElementById('check').addEventListener('click', () => vscode.postMessage({ type: 'checkRequirements' }));

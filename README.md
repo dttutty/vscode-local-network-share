@@ -13,8 +13,12 @@ This is useful when a remote development server needs to reach resources availab
 
 ## Use
 
+Open the **Local Network Share** icon in the Activity Bar to see the tunnel
+status and sharing controls. The extension uses its own sidebar and does not
+add a view to the Explorer.
+
 1. Connect to the server with VS Code Remote-SSH.
-2. Open **Local Network Share** in the Explorer sidebar.
+2. Open **Local Network Share** from its icon in the Activity Bar.
 3. Select **Start sharing**.
 4. Open a new integrated terminal.
 

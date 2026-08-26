@@ -1,5 +1,11 @@
 import * as vscode from 'vscode';
 import {
+  createAptInstallCommand,
+  createOneTimeAptCommand,
+  createPersistentAptCommand,
+  REMOVE_PERSISTENT_APT_PROXY_COMMAND,
+} from './aptCommands';
+import {
   probeRemoteCapabilities,
   type RemoteCapabilities,
   type RemoteCapabilityProbeConfiguration,
@@ -110,7 +116,7 @@ export function activate(context: vscode.ExtensionContext): void {
           {
             label: 'Copy APT proxy removal command',
             description: 'Removes the extension-specific APT config file',
-            command: 'sudo rm -f /etc/apt/apt.conf.d/99local-network-share',
+            command: REMOVE_PERSISTENT_APT_PROXY_COMMAND,
           },
         ],
         { placeHolder: 'Choose a safe APT command to copy' },
@@ -141,7 +147,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('localNetworkShare.copyAptPersistentRemoval', async () => {
       await copyTerminalCommand(
-        'sudo rm -f /etc/apt/apt.conf.d/99local-network-share',
+        REMOVE_PERSISTENT_APT_PROXY_COMMAND,
         'Persistent APT proxy removal command copied.',
       );
     }),
@@ -316,21 +322,6 @@ async function refreshRemoteCapabilities(
     output.appendLine(`[capabilities] ${message}`);
     viewProvider.updateCapabilities({ phase: 'error', message });
   }
-}
-
-function createOneTimeAptCommand(port: number): string {
-  const proxy = `http://127.0.0.1:${port}`;
-  return `sudo apt -o Acquire::http::Proxy="${proxy}" -o Acquire::https::Proxy="${proxy}" update`;
-}
-
-function createAptInstallCommand(port: number): string {
-  const proxy = `http://127.0.0.1:${port}`;
-  return `sudo apt -o Acquire::http::Proxy="${proxy}" -o Acquire::https::Proxy="${proxy}" install PACKAGE_NAME`;
-}
-
-function createPersistentAptCommand(port: number): string {
-  const proxy = `http://127.0.0.1:${port}`;
-  return `printf '%s\\n' 'Acquire::http::Proxy "${proxy}";' 'Acquire::https::Proxy "${proxy}";' | sudo tee /etc/apt/apt.conf.d/99local-network-share >/dev/null`;
 }
 
 async function copyTerminalCommand(command: string, message: string): Promise<void> {

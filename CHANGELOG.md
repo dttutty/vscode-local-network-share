@@ -8,6 +8,7 @@
 - Replace the unclear missing-target error with an inline SSH host picker that saves the user's Remote-SSH alias and continues startup.
 - Simplify the Advanced TUN sidebar into a task-oriented readiness summary that shows only missing requirements and the next actions.
 - Add an APT and sudo sidebar section with one-click copy actions for update, install, persistent proxy setup, and removal without relying on `sudo -E`.
+- Show the exact generated shell command in a hover tooltip for every APT copy action.
 
 ## 0.1.4
 

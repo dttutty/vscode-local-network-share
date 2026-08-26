@@ -1,4 +1,10 @@
 import * as vscode from 'vscode';
+import {
+  createAptInstallCommand,
+  createOneTimeAptCommand,
+  createPersistentAptCommand,
+  REMOVE_PERSISTENT_APT_PROXY_COMMAND,
+} from './aptCommands';
 import type { CapabilityProbeState } from './remoteCapabilities';
 import type { TunnelState } from './tunnelManager';
 
@@ -79,35 +85,37 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
   }
 
   private aptCommandsItem(): ShareItem {
+    const httpPort = this.state.remoteHttpPort ?? this.port + 1;
     return new ShareItem(
       'APT and sudo',
       'Copy working commands',
       new vscode.ThemeIcon('package'),
       undefined,
       [
-        new ShareItem(
+        copyCommandItem(
           'Copy one-time apt update',
           'No persistent changes',
-          new vscode.ThemeIcon('copy'),
           'localNetworkShare.copyAptUpdate',
+          createOneTimeAptCommand(httpPort),
         ),
-        new ShareItem(
+        copyCommandItem(
           'Copy apt install command',
           'Replace PACKAGE_NAME',
-          new vscode.ThemeIcon('copy'),
           'localNetworkShare.copyAptInstall',
+          createAptInstallCommand(httpPort),
         ),
-        new ShareItem(
+        copyCommandItem(
           'Copy persistent APT setup',
           'Applies while sharing is active',
-          new vscode.ThemeIcon('copy'),
           'localNetworkShare.copyAptPersistentSetup',
+          createPersistentAptCommand(httpPort),
         ),
-        new ShareItem(
+        copyCommandItem(
           'Copy persistent setup removal',
           undefined,
-          new vscode.ThemeIcon('trash'),
           'localNetworkShare.copyAptPersistentRemoval',
+          REMOVE_PERSISTENT_APT_PROXY_COMMAND,
+          new vscode.ThemeIcon('trash'),
         ),
       ],
     );
@@ -245,4 +253,19 @@ class ShareItem extends vscode.TreeItem {
       this.command = { command: commandId, title: label };
     }
   }
+}
+
+function copyCommandItem(
+  label: string,
+  description: string | undefined,
+  commandId: string,
+  commandText: string,
+  icon = new vscode.ThemeIcon('copy'),
+): ShareItem {
+  const item = new ShareItem(label, description, icon, commandId);
+  const tooltip = new vscode.MarkdownString();
+  tooltip.appendMarkdown('Copies this command:\n\n');
+  tooltip.appendCodeblock(commandText, 'shell');
+  item.tooltip = tooltip;
+  return item;
 }

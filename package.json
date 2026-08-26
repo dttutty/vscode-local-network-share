@@ -1,0 +1,172 @@
+{
+  "name": "remote-local-network-share",
+  "displayName": "Remote Local Network Share",
+  "description": "Share your local network with a VS Code Remote-SSH host through a loopback-only reverse SOCKS tunnel.",
+  "version": "0.1.0",
+  "publisher": "local-network-tools",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dttutty/vscode-local-network-share.git"
+  },
+  "homepage": "https://github.com/dttutty/vscode-local-network-share#readme",
+  "bugs": {
+    "url": "https://github.com/dttutty/vscode-local-network-share/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "remote ssh",
+    "proxy",
+    "socks5",
+    "reverse tunnel",
+    "vpn"
+  ],
+  "main": "./out/extension.js",
+  "extensionKind": [
+    "ui"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Starting an SSH reverse tunnel requires a trusted workspace."
+    },
+    "virtualWorkspaces": false
+  },
+  "activationEvents": [
+    "onView:localNetworkShare.view",
+    "onCommand:localNetworkShare.start",
+    "onCommand:localNetworkShare.stop",
+    "onCommand:localNetworkShare.restart",
+    "onCommand:localNetworkShare.copyProxyEnvironment"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "localNetworkShare.start",
+        "title": "Local Network Share: Start Sharing",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "localNetworkShare.stop",
+        "title": "Local Network Share: Stop Sharing",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "localNetworkShare.restart",
+        "title": "Local Network Share: Restart Tunnel",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "localNetworkShare.copyProxyEnvironment",
+        "title": "Local Network Share: Copy Proxy Environment",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "localNetworkShare.showOutput",
+        "title": "Local Network Share: Show Log",
+        "icon": "$(output)"
+      },
+      {
+        "command": "localNetworkShare.openSettings",
+        "title": "Local Network Share: Open Settings",
+        "icon": "$(gear)"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "localNetworkShare.view",
+          "name": "Local Network Share",
+          "when": "remoteName == ssh-remote"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "localNetworkShare.start",
+          "when": "view == localNetworkShare.view && !localNetworkShare.running",
+          "group": "navigation@1"
+        },
+        {
+          "command": "localNetworkShare.stop",
+          "when": "view == localNetworkShare.view && localNetworkShare.running",
+          "group": "navigation@1"
+        },
+        {
+          "command": "localNetworkShare.restart",
+          "when": "view == localNetworkShare.view && localNetworkShare.running",
+          "group": "navigation@2"
+        },
+        {
+          "command": "localNetworkShare.showOutput",
+          "when": "view == localNetworkShare.view",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Remote Local Network Share",
+      "properties": {
+        "localNetworkShare.sshTarget": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "SSH destination or config alias used for the additional tunnel connection. Leave empty to infer it from the current Remote-SSH workspace. Examples: `dev-server` or `user@example.com`."
+        },
+        "localNetworkShare.remotePort": {
+          "type": "integer",
+          "default": 17890,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Loopback TCP port on the remote server where the SOCKS5 proxy listens."
+        },
+        "localNetworkShare.sshPath": {
+          "type": "string",
+          "default": "ssh",
+          "description": "Path to the local OpenSSH client executable."
+        },
+        "localNetworkShare.sshConfigFile": {
+          "type": "string",
+          "default": "",
+          "description": "Optional local SSH config file passed with -F. Leave empty to use the OpenSSH default."
+        },
+        "localNetworkShare.injectHttpProxyVariables": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also set `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, and `https_proxy` to the SOCKS5 URL for newly created integrated terminals. Disable this for tools that require those variables to point to an HTTP CONNECT proxy."
+        },
+        "localNetworkShare.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start network sharing automatically after opening a Remote-SSH window."
+        },
+        "localNetworkShare.connectTimeoutSeconds": {
+          "type": "integer",
+          "default": 15,
+          "minimum": 3,
+          "maximum": 120,
+          "description": "Timeout used while establishing the additional SSH tunnel connection."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "node ./scripts/clean.mjs",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run clean && npm run compile && node --test out/test/**/*.test.js",
+    "vscode:prepublish": "npm run clean && npm run compile",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.2.1",
+    "typescript": "^5.7.2"
+  }
+}

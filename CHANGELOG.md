@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.6
+
+- Present APT/sudo commands as non-editable rounded code cards with a compact copy icon in each card's upper-right corner.
+
 ## 0.2.5
 
 - Move Open log and Settings to two compact View title icons in the upper-right corner.

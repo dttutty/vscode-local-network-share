@@ -183,12 +183,13 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     .item-title { font-weight: 600; }
     .item-copy { min-width: 0; }
     .apt-grid { display: grid; gap: 12px; }
-    .command-box { display: grid; gap: 6px; }
-    .command-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .command-title { font-size: 12px; font-weight: 600; }
-    .copy-button { padding: 3px 8px; font-size: 11px; }
-    textarea { box-sizing: border-box; width: 100%; min-height: 56px; padding: 8px; resize: vertical; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 3px; font-family: var(--vscode-editor-font-family); font-size: 11px; line-height: 1.45; }
-    textarea:focus { outline: 1px solid var(--vscode-focusBorder); }
+    .command-box { position: relative; padding: 12px 38px 12px 12px; border: 1px solid var(--vscode-widget-border); border-radius: 10px; background: var(--vscode-textCodeBlock-background); }
+    .command-title { margin-bottom: 8px; color: var(--vscode-descriptionForeground); font-size: 11px; font-weight: 600; }
+    .copy-button { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; padding: 4px; color: var(--vscode-icon-foreground); background: transparent; }
+    .copy-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
+    .copy-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    pre { margin: 0; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre code { display: inline; padding: 0; color: var(--vscode-textPreformat-foreground); background: transparent; font-family: var(--vscode-editor-font-family); font-size: 11px; line-height: 1.5; }
     .notice { min-height: 16px; color: var(--vscode-descriptionForeground); font-size: 12px; }
     .notice.error { color: var(--vscode-errorForeground); }
   </style>
@@ -257,23 +258,27 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
 
     <details class="card">
       <summary>APT and sudo commands</summary>
-      <p class="description">Review the exact command, then use Copy. Start sharing before running it; the extension never executes sudo automatically.</p>
+      <p class="description">Review the exact command, then use the copy icon. Start sharing before running it; the extension never executes sudo automatically.</p>
       <div class="apt-grid">
         <div class="command-box">
-          <div class="command-header"><span class="command-title">One-time apt update</span><button class="copy-button" data-command="localNetworkShare.copyAptUpdate">Copy</button></div>
-          <textarea id="apt-update" rows="3" readonly aria-label="One-time apt update command"></textarea>
+          <div class="command-title">One-time apt update</div>
+          ${copyIconButton('localNetworkShare.copyAptUpdate', 'Copy one-time apt update command')}
+          <pre><code id="apt-update"></code></pre>
         </div>
         <div class="command-box">
-          <div class="command-header"><span class="command-title">Install a package</span><button class="copy-button" data-command="localNetworkShare.copyAptInstall">Copy</button></div>
-          <textarea id="apt-install" rows="3" readonly aria-label="APT install command"></textarea>
+          <div class="command-title">Install a package</div>
+          ${copyIconButton('localNetworkShare.copyAptInstall', 'Copy APT install command')}
+          <pre><code id="apt-install"></code></pre>
         </div>
         <div class="command-box">
-          <div class="command-header"><span class="command-title">Persistent APT proxy setup</span><button class="copy-button" data-command="localNetworkShare.copyAptPersistentSetup">Copy</button></div>
-          <textarea id="apt-persistent" rows="5" readonly aria-label="Persistent APT proxy setup command"></textarea>
+          <div class="command-title">Persistent APT proxy setup</div>
+          ${copyIconButton('localNetworkShare.copyAptPersistentSetup', 'Copy persistent APT proxy setup')}
+          <pre><code id="apt-persistent"></code></pre>
         </div>
         <div class="command-box">
-          <div class="command-header"><span class="command-title">Remove persistent setup</span><button class="copy-button" data-command="localNetworkShare.copyAptPersistentRemoval">Copy</button></div>
-          <textarea id="apt-remove" rows="2" readonly aria-label="Persistent APT proxy removal command"></textarea>
+          <div class="command-title">Remove persistent setup</div>
+          ${copyIconButton('localNetworkShare.copyAptPersistentRemoval', 'Copy persistent APT proxy removal command')}
+          <pre><code id="apt-remove"></code></pre>
         </div>
       </div>
     </details>
@@ -372,4 +377,10 @@ function createShareViewState(
       remove: REMOVE_PERSISTENT_APT_PROXY_COMMAND,
     },
   };
+}
+
+function copyIconButton(command: string, label: string): string {
+  return `<button class="copy-button" data-command="${command}" title="${label}" aria-label="${label}">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8" height="8" rx="1.5"></rect><path d="M3 11H2.5A1.5 1.5 0 0 1 1 9.5v-7A1.5 1.5 0 0 1 2.5 1h7A1.5 1.5 0 0 1 11 2.5V3"></path></svg>
+  </button>`;
 }

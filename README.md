@@ -94,7 +94,7 @@ The extension changes the environment of newly created VS Code integrated termin
 
 The main sidebar is a custom Webview dashboard rather than a native tree. It keeps connection state, target selection, Start/Stop, proxy endpoints, APT actions, and mode navigation together. Two compact View title icons in the upper-right open the log and settings; the TUN mode tab is the only Advanced TUN entry. Its expandable **Proxy coverage** section identifies new terminals and common environment-aware tools as usually covered, marks existing terminals and APT/sudo as requiring action, and clearly lists Docker daemon, systemd, cron, and applications that ignore proxy variables as unmanaged. Coverage is inferred from the environment controlled by the extension; it is not live inspection of running processes.
 
-The **APT and sudo commands** section displays each exact command in a read-only text box with its own Copy button, so the command can be inspected before anything is pasted into a terminal.
+The **APT and sudo commands** section displays each exact command in a non-editable rounded code card with a compact copy icon in the upper-right, so the command can be inspected before anything is pasted into a terminal.
 
 ## Sudo and advanced transparent mode
 

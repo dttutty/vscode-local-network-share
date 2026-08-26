@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Switch between the Network Sharing and Advanced TUN Sidebar Webviews instead of leaving both interfaces open.
+- Add a Back to Network Sharing control while preserving the active proxy tunnel until the user explicitly stops it.
+
 ## 0.2.0
 
 - Replace the native Share Status tree with a custom Sidebar Webview dashboard for connection state, target selection, Start/Stop, proxy endpoints, coverage, APT actions, logs, settings, and Advanced TUN.

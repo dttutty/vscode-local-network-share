@@ -102,6 +102,8 @@ Because the readiness check never prompts for a password, password-protected sud
 
 The main status view contains **Open Advanced TUN Setup…**. After an explicit physical/BMC-access warning, it expands a custom Webview directly inside the Local Network Share sidebar instead of opening an editor tab. The sidebar shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
 
+Opening Advanced TUN hides the main Network Sharing dashboard and switches the sidebar to the advanced interface. Its Back control restores the main dashboard. This is an interface switch only: an active proxy tunnel keeps running until **Stop sharing** is selected.
+
 ## Security
 
 - The remote proxy always binds to `127.0.0.1`; the extension never requests a public `0.0.0.0` listener.

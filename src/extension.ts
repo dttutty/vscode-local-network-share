@@ -68,6 +68,10 @@ export function activate(context: vscode.ExtensionContext): void {
   advancedTunView = new AdvancedTunViewProvider(
     createAdvancedTunViewState(manager, readSettings(), resolveSshTarget(readSettings().sshTarget)),
     {
+      closeView: async () => {
+        await vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', false);
+        await vscode.commands.executeCommand(`${ShareViewProvider.viewType}.focus`);
+      },
       startSharing: async () => {
         await vscode.commands.executeCommand('localNetworkShare.start');
       },
@@ -225,6 +229,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const settings = readSettings();
       const target = manager.currentState.target ?? resolveSshTarget(settings.sshTarget);
       advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
+      await vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', true);
       await advancedTunView.reveal();
     }),
     vscode.commands.registerCommand('localNetworkShare.chooseSshTarget', async () => {
@@ -237,6 +242,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('localNetworkShare.openSettings', openSettings),
   );
 
+  void vscode.commands.executeCommand('setContext', 'localNetworkShare.advancedMode', false);
   void refreshPresentation();
 
   if (vscode.env.remoteName === 'ssh-remote' && readSettings().autoStart) {

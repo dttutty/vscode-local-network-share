@@ -14,6 +14,7 @@ export interface AdvancedTunViewState {
 }
 
 export interface AdvancedTunViewCallbacks {
+  closeView(): Promise<void>;
   startSharing(): Promise<void>;
   stopSharing(): Promise<void>;
   checkRequirements(): Promise<void>;
@@ -70,6 +71,8 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
     try {
       if (typed.type === 'startSharing') {
         await this.callbacks.startSharing();
+      } else if (typed.type === 'closeView') {
+        await this.callbacks.closeView();
       } else if (typed.type === 'stopSharing') {
         await this.callbacks.stopSharing();
       } else if (typed.type === 'checkRequirements') {
@@ -147,10 +150,13 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
     .notice.error { color: var(--vscode-errorForeground); }
     summary { cursor: pointer; font-weight: 600; }
     details[open] summary { margin-bottom: 12px; }
+    .back { margin: 0 0 12px; padding: 0; color: var(--vscode-textLink-foreground); background: transparent; }
+    .back:hover { color: var(--vscode-textLink-activeForeground); background: transparent; }
   </style>
 </head>
 <body>
   <main>
+    <button id="back" class="back">← Network Sharing</button>
     <h1>Advanced TUN Setup</h1>
     <p class="subtitle">A guided planning page for applications that cannot use SOCKS5 or HTTP proxy settings.</p>
 
@@ -334,6 +340,7 @@ export class AdvancedTunViewProvider implements vscode.WebviewViewProvider, vsco
 
     safety.addEventListener('change', updateControls);
     routing.addEventListener('change', updateControls);
+    document.getElementById('back').addEventListener('click', () => vscode.postMessage({ type: 'closeView' }));
     document.getElementById('startSharing').addEventListener('click', () => vscode.postMessage({ type: 'startSharing' }));
     document.getElementById('stopSharing').addEventListener('click', () => vscode.postMessage({ type: 'stopSharing' }));
     document.getElementById('check').addEventListener('click', () => vscode.postMessage({ type: 'checkRequirements' }));

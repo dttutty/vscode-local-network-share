@@ -94,9 +94,9 @@ The extension changes the environment of newly created VS Code integrated termin
 
 ## Sudo and advanced transparent mode
 
-After sharing starts, the extension performs a non-interactive, read-only check for sudo membership and relevant Linux capabilities. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.
+The extension can perform a non-interactive, read-only check for sudo membership and relevant Linux capabilities before sharing starts. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.
 
-The main sidebar contains only **Open Advanced TUN Setup…**. After an explicit physical/BMC-access warning, it opens a dedicated Webview page with friendly readiness cards, routing isolation, interface, MTU, DNS options, rechecking, and a reviewable setup plan. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
+The main sidebar contains only **Open Advanced TUN Setup…**. After an explicit physical/BMC-access warning, it opens a dedicated Webview page with a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, routing isolation, interface, MTU, DNS options, rechecking, and a reviewable setup plan. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
 
 ## Security
 

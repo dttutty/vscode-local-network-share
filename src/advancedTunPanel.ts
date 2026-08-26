@@ -4,6 +4,7 @@ import type { RemoteCapabilities } from './remoteCapabilities';
 import { createTunSetupPlan, validateTunSetupOptions } from './tunSettings';
 
 export interface AdvancedTunPanelState {
+  workflowStage: 'check' | 'start' | 'stop';
   sharingActive: boolean;
   checking: boolean;
   target?: string;
@@ -14,6 +15,7 @@ export interface AdvancedTunPanelState {
 
 export interface AdvancedTunPanelCallbacks {
   startSharing(): Promise<void>;
+  stopSharing(): Promise<void>;
   checkRequirements(): Promise<void>;
 }
 
@@ -68,6 +70,8 @@ export class AdvancedTunPanel implements vscode.Disposable {
     try {
       if (typed.type === 'startSharing') {
         await this.callbacks.startSharing();
+      } else if (typed.type === 'stopSharing') {
+        await this.callbacks.stopSharing();
       } else if (typed.type === 'checkRequirements') {
         await this.callbacks.checkRequirements();
       } else if (typed.type === 'copyPlan') {
@@ -106,6 +110,11 @@ export class AdvancedTunPanel implements vscode.Disposable {
     h2 { margin: 0 0 16px; font-size: 16px; }
     p { line-height: 1.55; }
     .subtitle { margin: 0 0 24px; color: var(--vscode-descriptionForeground); }
+    .workflow { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 24px 0; }
+    .step { min-width: 110px; padding: 11px 18px; color: var(--vscode-descriptionForeground); background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); border-radius: 999px; text-align: center; font-weight: 600; }
+    .step.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-focusBorder); box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
+    .step.complete { color: var(--vscode-testing-iconPassed); border-color: var(--vscode-testing-iconPassed); }
+    .arrow { color: var(--vscode-descriptionForeground); font-size: 20px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
     .card { padding: 20px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .danger { border-color: var(--vscode-inputValidation-warningBorder); background: var(--vscode-inputValidation-warningBackground); }
@@ -133,12 +142,25 @@ export class AdvancedTunPanel implements vscode.Disposable {
     .global-warning { display: none; margin-top: 10px; color: var(--vscode-testing-iconFailed); }
     .notice { min-height: 20px; margin-top: 12px; color: var(--vscode-descriptionForeground); }
     .notice.error { color: var(--vscode-errorForeground); }
+    @media (max-width: 560px) {
+      body { padding: 20px; }
+      .workflow { gap: 5px; }
+      .step { min-width: 0; padding: 9px 12px; }
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>Advanced TUN Setup</h1>
     <p class="subtitle">A guided planning page for applications that cannot use SOCKS5 or HTTP proxy settings.</p>
+
+    <nav class="workflow" aria-label="Setup progress">
+      <div id="stage-check" class="step">1. Check</div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div id="stage-start" class="step">2. Start</div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div id="stage-stop" class="step">3. Stop</div>
+    </nav>
 
     <section class="card danger">
       <strong>⚠ This can interrupt SSH access.</strong>
@@ -152,8 +174,9 @@ export class AdvancedTunPanel implements vscode.Disposable {
         <p id="connectionStatus" class="subtitle"></p>
         <div id="requirements" class="requirements"></div>
         <div class="actions">
-          <button id="startSharing">Start sharing</button>
-          <button id="check" class="secondary">Check again</button>
+          <button id="check">Check server</button>
+          <button id="startSharing" class="secondary">Start sharing</button>
+          <button id="stopSharing" class="secondary">Stop sharing</button>
         </div>
       </section>
 
@@ -201,16 +224,36 @@ export class AdvancedTunPanel implements vscode.Disposable {
     const copyPlan = document.getElementById('copyPlan');
     const routing = document.getElementById('routing');
     const globalWarning = document.getElementById('globalWarning');
+    const stageOrder = ['check', 'start', 'stop'];
 
     function render(next) {
       state = next;
-      document.getElementById('connectionStatus').textContent = state.sharingActive
-        ? 'Sharing with ' + (state.target || 'the selected server') + ' through SOCKS5 port ' + state.socksPort + '.'
-        : 'Start sharing before checking the remote server.';
-      document.getElementById('startSharing').style.display = state.sharingActive ? 'none' : '';
+      const activeIndex = stageOrder.indexOf(state.workflowStage);
+      stageOrder.forEach((stage, index) => {
+        const element = document.getElementById('stage-' + stage);
+        element.className = 'step' + (index === activeIndex ? ' active' : (index < activeIndex ? ' complete' : ''));
+        element.setAttribute('aria-current', index === activeIndex ? 'step' : 'false');
+      });
+      document.getElementById('connectionStatus').textContent = state.checking
+        ? 'Checking ' + (state.target || 'the selected server') + '…'
+        : state.sharingActive
+          ? 'Sharing with ' + (state.target || 'the selected server') + ' through SOCKS5 port ' + state.socksPort + '.'
+          : state.capabilities
+            ? 'Check complete. Review the results, then start sharing.'
+            : state.workflowStage === 'stop'
+              ? 'Sharing is stopped. Run Check to begin again.'
+              : 'Check the remote server before starting network sharing.';
+      const start = document.getElementById('startSharing');
+      start.style.display = state.sharingActive ? 'none' : '';
+      start.disabled = state.checking || !state.capabilities;
+      const stop = document.getElementById('stopSharing');
+      stop.style.display = state.sharingActive ? '' : 'none';
       const check = document.getElementById('check');
-      check.disabled = !state.sharingActive || state.checking;
-      check.textContent = state.checking ? 'Checking…' : 'Check again';
+      check.disabled = state.checking;
+      check.textContent = state.checking ? 'Checking…' : (state.capabilities ? 'Check again' : 'Check server');
+      check.className = state.workflowStage === 'check' ? '' : 'secondary';
+      start.className = state.workflowStage === 'start' ? '' : 'secondary';
+      stop.className = state.workflowStage === 'stop' ? '' : 'secondary';
       const container = document.getElementById('requirements');
       container.replaceChildren(...requirements.map(([label, test]) => {
         const row = document.createElement('div');
@@ -242,6 +285,7 @@ export class AdvancedTunPanel implements vscode.Disposable {
     safety.addEventListener('change', updateControls);
     routing.addEventListener('change', updateControls);
     document.getElementById('startSharing').addEventListener('click', () => vscode.postMessage({ type: 'startSharing' }));
+    document.getElementById('stopSharing').addEventListener('click', () => vscode.postMessage({ type: 'stopSharing' }));
     document.getElementById('check').addEventListener('click', () => vscode.postMessage({ type: 'checkRequirements' }));
     copyPlan.addEventListener('click', () => vscode.postMessage({
       type: 'copyPlan',

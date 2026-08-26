@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.6
+
+- Add a prominent Check → Start → Stop workflow to the Advanced TUN page and highlight the current stage.
+- Allow the remote readiness check to run before network sharing starts and retain its results after sharing stops.
+
 ## 0.1.5
 
 - Add a loopback-only HTTP CONNECT bridge alongside the SOCKS5 endpoint for tools such as pip, Conda, and Wget.

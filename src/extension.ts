@@ -14,12 +14,15 @@ import {
 import { parseRemoteSshTarget, sanitizeTarget } from './remoteTarget';
 import { ShareViewProvider } from './shareView';
 import { TunnelManager } from './tunnelManager';
+import { determineTunWorkflowStage } from './tunSettings';
 
 let tunnelManager: TunnelManager | undefined;
 let capabilityProbeGeneration = 0;
 let lastCapabilities: RemoteCapabilities | undefined;
+let lastCapabilitiesTarget: string | undefined;
 let capabilityProbeChecking = false;
 let capabilityProbeError: string | undefined;
+let advancedTunStopped = false;
 
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel('Local Network Share');
@@ -84,6 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
           },
           () => manager.start({ ...settings, sshTarget: target }),
         );
+        advancedTunStopped = false;
         void vscode.window.showInformationMessage(
           `Local network sharing is active. SOCKS5: 127.0.0.1:${settings.remotePort}; HTTP: 127.0.0.1:${settings.httpProxyRemotePort}. Open a new terminal to use it.`,
         );
@@ -95,9 +99,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('localNetworkShare.stop', async () => {
       ++capabilityProbeGeneration;
-      lastCapabilities = undefined;
       capabilityProbeChecking = false;
       capabilityProbeError = undefined;
+      advancedTunStopped = true;
       await manager.stop();
       advancedTunPanel?.update(createAdvancedTunPanelState(manager, readSettings()));
       void vscode.window.showInformationMessage('Local network sharing stopped. Open terminals keep their existing environment until closed.');
@@ -185,14 +189,21 @@ export function activate(context: vscode.ExtensionContext): void {
             startSharing: async () => {
               await vscode.commands.executeCommand('localNetworkShare.start');
             },
+            stopSharing: async () => {
+              await vscode.commands.executeCommand('localNetworkShare.stop');
+            },
             checkRequirements: async () => {
-              if (!ensureRemoteSshWindow() || manager.currentState.phase !== 'active') {
-                throw new Error('Start local network sharing before checking the server.');
+              if (!ensureRemoteSshWindow()) {
+                return;
               }
               const currentSettings = readSettings();
-              const currentTarget = manager.currentState.target ?? resolveSshTarget(currentSettings.sshTarget);
+              let currentTarget = manager.currentState.target ?? resolveSshTarget(currentSettings.sshTarget);
               if (!currentTarget) {
-                throw new Error('Select the Remote-SSH host in the Local Network Share sidebar first.');
+                currentTarget = await chooseAndSaveSshTarget();
+                if (!currentTarget) {
+                  return;
+                }
+                await refreshPresentation();
               }
               await runCapabilityCheck(currentSettings, currentTarget);
             },
@@ -319,6 +330,12 @@ async function chooseAndSaveSshTarget(): Promise<string | undefined> {
     target,
     vscode.ConfigurationTarget.Global,
   );
+  if (lastCapabilitiesTarget !== target) {
+    lastCapabilities = undefined;
+    lastCapabilitiesTarget = undefined;
+    capabilityProbeError = undefined;
+    advancedTunStopped = false;
+  }
   return target;
 }
 
@@ -329,6 +346,7 @@ async function refreshRemoteCapabilities(
   onUpdate?: () => void,
 ): Promise<void> {
   const generation = ++capabilityProbeGeneration;
+  advancedTunStopped = false;
   capabilityProbeChecking = true;
   capabilityProbeError = undefined;
   onUpdate?.();
@@ -338,6 +356,7 @@ async function refreshRemoteCapabilities(
       return;
     }
     lastCapabilities = capabilities;
+    lastCapabilitiesTarget = target;
     capabilityProbeChecking = false;
     onUpdate?.();
   } catch (error) {
@@ -362,12 +381,22 @@ function createAdvancedTunPanelState(
   settings: ReturnType<typeof readSettings>,
   target?: string,
 ): AdvancedTunPanelState {
+  const resolvedTarget = manager.currentState.target ?? target;
+  const capabilities = resolvedTarget && lastCapabilitiesTarget === resolvedTarget
+    ? lastCapabilities
+    : undefined;
   return {
+    workflowStage: determineTunWorkflowStage({
+      checking: capabilityProbeChecking,
+      tunnelPhase: manager.currentState.phase,
+      hasCapabilities: Boolean(capabilities),
+      stopped: advancedTunStopped,
+    }),
     sharingActive: manager.currentState.phase === 'active',
     checking: capabilityProbeChecking,
-    target: manager.currentState.target ?? target,
+    target: resolvedTarget,
     socksPort: manager.currentState.remotePort ?? settings.remotePort,
-    capabilities: lastCapabilities,
+    capabilities,
     error: capabilityProbeError,
   };
 }

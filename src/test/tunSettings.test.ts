@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createTunSetupPlan, validateTunSetupOptions } from '../tunSettings';
+import { createTunSetupPlan, determineTunWorkflowStage, validateTunSetupOptions } from '../tunSettings';
+
+test('maps Advanced TUN progress to Check, Start, and Stop', () => {
+  assert.equal(determineTunWorkflowStage({ checking: false, tunnelPhase: 'idle', hasCapabilities: false, stopped: false }), 'check');
+  assert.equal(determineTunWorkflowStage({ checking: true, tunnelPhase: 'idle', hasCapabilities: true, stopped: false }), 'check');
+  assert.equal(determineTunWorkflowStage({ checking: false, tunnelPhase: 'idle', hasCapabilities: true, stopped: false }), 'start');
+  assert.equal(determineTunWorkflowStage({ checking: false, tunnelPhase: 'starting', hasCapabilities: true, stopped: false }), 'start');
+  assert.equal(determineTunWorkflowStage({ checking: false, tunnelPhase: 'active', hasCapabilities: true, stopped: false }), 'stop');
+  assert.equal(determineTunWorkflowStage({ checking: true, tunnelPhase: 'active', hasCapabilities: true, stopped: false }), 'stop');
+  assert.equal(determineTunWorkflowStage({ checking: false, tunnelPhase: 'idle', hasCapabilities: true, stopped: true }), 'stop');
+});
 
 test('validates safe TUN setup options', () => {
   assert.deepEqual(validateTunSetupOptions({

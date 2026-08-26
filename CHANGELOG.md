@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.2.8
+
+- Explain the SSH reverse-tunnel and loopback-proxy design while sharing is inactive, then hide the explanation as soon as startup begins.
+
+## 0.2.7
+
+- Hide Proxy coverage and APT/sudo commands until network sharing is active, and hide them again after sharing stops.
+
+## 0.2.6
+
+- Present APT/sudo commands as non-editable rounded code cards with a compact copy icon in each card's upper-right corner.
+
+## 0.2.5
+
+- Move Open log and Settings to two compact View title icons in the upper-right corner.
+- Remove the redundant footer buttons, including Advanced TUN now that the persistent TUN mode tab is the canonical entry.
+
+## 0.2.4
+
+- Replace the TUN risk checkbox with an I acknowledge safety gate; advanced controls remain hidden until acknowledged, then the warning card disappears.
+
+## 0.2.3
+
+- Fix a TUN page inline-script syntax error that prevented all controls, including Basic mode, from registering click handlers.
+- Validate the generated inline JavaScript for both Webview modes during the test run.
+- Render Basic mode and TUN mode inside one Sidebar Webview so tab switching no longer depends on hiding, recreating, or refocusing separate VS Code views.
+- Switch to TUN mode immediately without a redundant modal warning; the persistent risk warning and recovery-access acknowledgement remain inside the TUN interface.
+
+## 0.2.2
+
+- Add a persistent Basic mode / TUN mode tab bar at the top of both sidebar interfaces.
+- Show every APT/sudo command in a read-only text box with a Copy button in the upper-right corner.
+- Fix returning from Advanced TUN by reopening the Local Network Share container after switching view context and then focusing the main dashboard.
+
+## 0.2.1
+
+- Switch between the Network Sharing and Advanced TUN Sidebar Webviews instead of leaving both interfaces open.
+- Add a Back to Network Sharing control while preserving the active proxy tunnel until the user explicitly stops it.
+
+## 0.2.0
+
+- Replace the native Share Status tree with a custom Sidebar Webview dashboard for connection state, target selection, Start/Stop, proxy endpoints, coverage, APT actions, logs, settings, and Advanced TUN.
+- Remove duplicate native view-title action icons and present explanations and actions in context.
+
+## 0.1.9
+
+- Add an expandable Proxy coverage section showing which common tools are usually covered in new terminals, which require manual configuration, and which are not managed.
+- Distinguish environment-based compatibility from live process inspection and account for the HTTP proxy variable setting.
+
+## 0.1.8
+
+- Replace vague Advanced TUN readiness failures with specific status labels, visible explanations, impact, and next steps.
+- Treat password-protected, custom sudoers, and LDAP/AD sudo access as a manual verification warning instead of incorrectly implying that administrator access is absent.
+
+## 0.1.7
+
+- Move the custom Advanced TUN workflow into a collapsible Sidebar Webview instead of opening a separate editor tab.
+- Adapt the guided interface for the narrower sidebar and collapse setup/review details by default.
+
+## 0.1.6
+
+- Add a prominent Check → Start → Stop workflow to the Advanced TUN page and highlight the current stage.
+- Allow the remote readiness check to run before network sharing starts and retain its results after sharing stops.
+
 ## 0.1.5
 
 - Add a loopback-only HTTP CONNECT bridge alongside the SOCKS5 endpoint for tools such as pip, Conda, and Wget.

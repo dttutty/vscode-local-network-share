@@ -92,11 +92,25 @@ Jump hosts, identity files, usernames, ports, and other advanced options should 
 
 The extension changes the environment of newly created VS Code integrated terminals. It does not modify `/etc/environment`, systemd services, Docker daemon settings, firewall rules, or transparent system routing on the server. Applications must support SOCKS proxy URLs or the standard HTTP proxy environment variables.
 
+The main sidebar is a custom Webview dashboard rather than a native tree. It keeps connection state, target selection, Start/Stop, proxy endpoints, APT actions, and mode navigation together. Two compact View title icons in the upper-right open the log and settings; the TUN mode tab is the only Advanced TUN entry. Its expandable **Proxy coverage** section identifies new terminals and common environment-aware tools as usually covered, marks existing terminals and APT/sudo as requiring action, and clearly lists Docker daemon, systemd, cron, and applications that ignore proxy variables as unmanaged. Coverage is inferred from the environment controlled by the extension; it is not live inspection of running processes.
+
+The **APT and sudo commands** section displays each exact command in a non-editable rounded code card with a compact copy icon in the upper-right, so the command can be inspected before anything is pasted into a terminal.
+
+**Proxy coverage** and **APT and sudo commands** appear only after network sharing reaches the active state. Both sections hide again when sharing stops, preventing commands from being used against an inactive proxy endpoint.
+
+While sharing is inactive, the connection card explains the architecture: an additional SSH reverse tunnel exposes loopback-only proxy endpoints on the server, and new terminals receive their environment variables so traffic exits through the laptop network. The explanation hides as soon as startup begins.
+
 ## Sudo and advanced transparent mode
 
-After sharing starts, the extension performs a non-interactive, read-only check for sudo membership and relevant Linux capabilities. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.
+The extension can perform a non-interactive, read-only check for sudo membership and relevant Linux capabilities before sharing starts. It never asks for or stores a sudo password. The **APT and sudo** section copies explicit proxy commands for you to review and paste yourself; the extension never runs them automatically.
 
-The main sidebar contains only **Open Advanced TUN Setup…**. After an explicit physical/BMC-access warning, it opens a dedicated Webview page with friendly readiness cards, routing isolation, interface, MTU, DNS options, rechecking, and a reviewable setup plan. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
+Because the readiness check never prompts for a password, password-protected sudo, custom sudoers rules, and LDAP/AD administrator groups may be shown as **Manual check**. This does not mean the account lacks sudo access; run `sudo -v` in the remote terminal to verify it. Each readiness result includes a visible explanation and next step.
+
+The main status view contains **TUN mode**, which switches directly to a custom page inside the Local Network Share Sidebar Webview instead of opening an editor tab or redundant modal. On every entry, only the physical/BMC-access warning and an **I acknowledge** button are shown; acknowledgement removes the warning and reveals the advanced controls. The page then shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
+
+Opening Advanced TUN hides the main Network Sharing dashboard and switches the sidebar to the advanced interface. Selecting **Basic mode** restores the main dashboard. This is an interface switch only: an active proxy tunnel keeps running until **Stop sharing** is selected.
+
+Basic mode and TUN mode are two pages inside the same Sidebar Webview. Their persistent **Basic mode / TUN mode** tab bar highlights the active page, and selecting the other tab switches synchronously without destroying or recreating a VS Code view.
 
 ## Security
 

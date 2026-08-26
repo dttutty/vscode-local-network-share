@@ -2,7 +2,7 @@
   "name": "remote-local-network-share",
   "displayName": "Remote Local Network Share",
   "description": "Share your local network with a VS Code Remote-SSH host through a loopback-only reverse SOCKS tunnel.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "dttutty",
   "icon": "assets/publisher-logo.png",
   "license": "MIT",

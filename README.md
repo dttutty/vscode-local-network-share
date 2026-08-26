@@ -18,7 +18,7 @@ network policies.
 
 ## Requirements
 
-- Microsoft **Remote - SSH 0.126.0 or newer** in a desktop VS Code Remote-SSH window. The extension checks the installed version, disables sharing when this requirement is not met, and provides an **Open Remote - SSH** button that leads to the VS Code extension page for updating. Dev Containers, WSL, Codespaces, and browser-based VS Code are not supported yet.
+- Microsoft **Remote - SSH** in a desktop VS Code Remote-SSH window. No specific Remote-SSH version is required; the extension uses the local OpenSSH client for reverse forwarding rather than a proposed Remote-SSH API. If Remote-SSH is unavailable, the sidebar provides an **Open Remote - SSH** button. Dev Containers, WSL, Codespaces, and browser-based VS Code are not supported yet.
 - A local OpenSSH client with support for dynamic remote forwarding.
 - Key-based or SSH Agent authentication for the additional tunnel connection.
 - `AllowTcpForwarding` enabled by the remote SSH server administrator.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.14
+
+- Remove the artificial Remote - SSH 0.126.0 minimum-version gate. The extension requires a working Remote-SSH workspace but does not use the `terminalRemoteResolver` proposed API.
+- Continue to detect a missing Remote - SSH installation and provide a direct link to its extension page.
+
 ## 0.2.13
 
 - Document and display proxy coverage for the current Hugging Face Hub `hf` CLI and legacy `huggingface-cli` dataset/model downloads.

@@ -18,7 +18,7 @@ interface ShareViewState {
   httpPort: number;
   injectHttpProxyVariables: boolean;
   remoteSsh: {
-    compatible: boolean;
+    installed: boolean;
     installedVersion?: string;
     message: string;
   };
@@ -63,7 +63,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     17890,
     17891,
     true,
-    { compatible: false, message: 'Remote Local Network Share requires Remote - SSH 0.126.0 or newer.' },
+    { installed: false, message: 'Remote Local Network Share requires Microsoft Remote - SSH.' },
     { ready: false, message: 'Open a folder on the target server in a Remote-SSH window.' },
   );
   private mode: 'basic' | 'tun' = 'basic';
@@ -235,7 +235,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       <button class="mode-tab" aria-selected="false" data-command="localNetworkShare.openAdvancedTunSetup">TUN mode</button>
     </nav>
     <div id="dependencyWarning" class="dependency-warning" role="alert" hidden>
-      <strong>Remote - SSH update required</strong>
+      <strong>Remote - SSH required</strong>
       <span id="dependencyMessage"></span>
       <button class="secondary" data-command="localNetworkShare.openRemoteSshExtension">Open Remote - SSH</button>
     </div>
@@ -365,7 +365,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       document.getElementById('target').textContent = state.remoteWorkspace.ready ? (state.target || 'Select host…') : 'No remote folder open';
       document.getElementById('target').disabled = !state.remoteWorkspace.ready;
       document.getElementById('message').textContent = state.message || (active ? 'New integrated terminals receive the proxy environment.' : 'Start sharing to make the local network available on this SSH host.');
-      document.getElementById('dependencyWarning').hidden = state.remoteSsh.compatible;
+      document.getElementById('dependencyWarning').hidden = state.remoteSsh.installed;
       document.getElementById('dependencyMessage').textContent = state.remoteSsh.message;
       document.getElementById('workspaceWarning').hidden = state.remoteWorkspace.ready;
       document.getElementById('workspaceMessage').textContent = state.remoteWorkspace.message;
@@ -373,7 +373,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       document.getElementById('start').style.display = state.phase === 'idle' || state.phase === 'error' ? '' : 'none';
       document.getElementById('stop').style.display = active || state.phase === 'stopping' ? '' : 'none';
       document.getElementById('restart').style.display = active ? '' : 'none';
-      document.getElementById('start').disabled = busy || !state.remoteSsh.compatible || !state.remoteWorkspace.ready;
+      document.getElementById('start').disabled = busy || !state.remoteSsh.installed || !state.remoteWorkspace.ready;
       document.getElementById('stop').disabled = busy;
       document.getElementById('endpoints').style.display = active ? 'grid' : 'none';
       document.getElementById('coverageSection').hidden = !active;

@@ -2,6 +2,8 @@
 
 ## 0.2.3
 
+- Fix a TUN page inline-script syntax error that prevented all controls, including Basic mode, from registering click handlers.
+- Validate the generated inline JavaScript for both Webview modes during the test run.
 - Render Basic mode and TUN mode inside one Sidebar Webview so tab switching no longer depends on hiding, recreating, or refocusing separate VS Code views.
 - Switch to TUN mode immediately without a redundant modal warning; the persistent risk warning and recovery-access acknowledgement remain inside the TUN interface.
 

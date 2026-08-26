@@ -162,7 +162,7 @@
     "clean": "node ./scripts/clean.mjs",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "npm run clean && npm run compile && node --test out/test/**/*.test.js",
+    "test": "npm run clean && npm run compile && node ./scripts/validate-webview-scripts.mjs && node --test out/test/**/*.test.js",
     "vscode:prepublish": "npm run clean && npm run compile",
     "package": "vsce package --no-dependencies"
   },

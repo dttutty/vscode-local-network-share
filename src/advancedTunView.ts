@@ -253,7 +253,7 @@ export class AdvancedTunViewContent {
         pending: 'Checks for the Linux ip command used to create interfaces and routes.',
         detail: value => value.ipCommand
           ? 'The ip networking command is available.'
-          : 'The ip command was not found. Install your distribution\'s iproute2 package before using Advanced TUN.',
+          : 'The ip command was not found. Install the iproute2 package for your distribution before using Advanced TUN.',
       },
     ];
     const safety = document.getElementById('safety');

@@ -95,8 +95,9 @@ host…**，或直接启动共享，然后输入 Remote-SSH 中选择的同一�
 应用程序本身必须支持 SOCKS 代理 URL 或标准 HTTP 代理环境变量。
 
 主侧栏采用自定义 Webview 控制台，而不是原生树状界面。连接状态、目标选择、
-Start/Stop、代理端点、APT 操作、日志、设置和 Advanced TUN 入口都集中显示，
-也不会再出现重复的原生标题栏按钮。可展开的 **Proxy coverage** 区域中，新终端和通常读取环境变量的常用
+Start/Stop、代理端点、APT 操作和模式导航都集中显示。右上角只保留两个小图标，
+分别打开日志和设置；TUN mode 标签是唯一的 Advanced TUN 入口。可展开的
+**Proxy coverage** 区域中，新终端和通常读取环境变量的常用
 工具会标为通常已覆盖；已有终端及 APT/sudo 会标为需要用户操作；Docker
 daemon、systemd、cron 和忽略代理变量的应用会明确标为未接管。覆盖状态根据
 扩展能够控制的环境推断，并不是对运行中进程的实时检测。

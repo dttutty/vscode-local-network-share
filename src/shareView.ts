@@ -278,14 +278,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       </div>
     </details>
 
-    <section class="card">
-      <div class="actions">
-        <button class="secondary" data-command="localNetworkShare.showOutput">Open log</button>
-        <button class="secondary" data-command="localNetworkShare.openSettings">Settings</button>
-        <button class="secondary" data-command="localNetworkShare.openAdvancedTunSetup">Advanced TUN</button>
-      </div>
-      <div id="notice" class="notice" role="status"></div>
-    </section>
+    <div id="notice" class="notice" role="status"></div>
   </main>
 
   <script nonce="${nonce}">

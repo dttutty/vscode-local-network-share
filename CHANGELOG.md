@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.5
+
+- Move Open log and Settings to two compact View title icons in the upper-right corner.
+- Remove the redundant footer buttons, including Advanced TUN now that the persistent TUN mode tab is the canonical entry.
+
 ## 0.2.4
 
 - Replace the TUN risk checkbox with an I acknowledge safety gate; advanced controls remain hidden until acknowledged, then the warning card disappears.

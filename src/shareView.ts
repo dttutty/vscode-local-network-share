@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
-import { TunnelState } from './tunnelManager';
+import type { CapabilityProbeState } from './remoteCapabilities';
+import type { TunnelState } from './tunnelManager';
 
 export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<ShareItem | undefined>();
   private state: TunnelState = { phase: 'idle' };
+  private capabilities: CapabilityProbeState = { phase: 'idle' };
   private target: string | undefined;
   private port = 17890;
 
@@ -16,6 +18,11 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
     this.changeEmitter.fire(undefined);
   }
 
+  updateCapabilities(capabilities: CapabilityProbeState): void {
+    this.capabilities = capabilities;
+    this.changeEmitter.fire(undefined);
+  }
+
   getTreeItem(element: ShareItem): vscode.TreeItem {
     return element;
   }
@@ -25,8 +32,10 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
 
     if (this.state.phase === 'active') {
       const proxyUrl = `socks5h://127.0.0.1:${this.state.remotePort ?? this.port}`;
+      const httpProxyUrl = `http://127.0.0.1:${this.state.remoteHttpPort ?? this.port + 1}`;
       items.push(
-        new ShareItem('Remote proxy', proxyUrl, new vscode.ThemeIcon('radio-tower')),
+        new ShareItem('SOCKS5 proxy', proxyUrl, new vscode.ThemeIcon('radio-tower')),
+        new ShareItem('HTTP proxy', httpProxyUrl, new vscode.ThemeIcon('globe')),
         new ShareItem(
           'New terminals use the proxy',
           'Reopen existing terminals',
@@ -38,6 +47,7 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
           new vscode.ThemeIcon('copy'),
           'localNetworkShare.copyProxyEnvironment',
         ),
+        ...this.capabilityItems(),
         new ShareItem(
           'Stop sharing',
           undefined,
@@ -61,6 +71,33 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
       new ShareItem('Settings', undefined, new vscode.ThemeIcon('gear'), 'localNetworkShare.openSettings'),
     );
     return items;
+  }
+
+  private capabilityItems(): ShareItem[] {
+    if (this.capabilities.phase === 'checking') {
+      return [new ShareItem('Checking remote permissions…', undefined, new vscode.ThemeIcon('loading~spin'))];
+    }
+    if (this.capabilities.phase !== 'ready') {
+      return [];
+    }
+
+    const { capabilities } = this.capabilities;
+    if (capabilities.sudoAccess !== 'member' && capabilities.sudoAccess !== 'passwordless') {
+      return [];
+    }
+
+    const sudoDescription = capabilities.sudoAccess === 'passwordless'
+      ? 'Passwordless sudo detected'
+      : 'Password may be required';
+    return [
+      new ShareItem('Sudo access detected', sudoDescription, new vscode.ThemeIcon('shield')),
+      new ShareItem(
+        'Configure APT for sudo',
+        'Copy safe APT proxy commands',
+        new vscode.ThemeIcon('package'),
+        'localNetworkShare.configureAptProxy',
+      ),
+    ];
   }
 
   dispose(): void {

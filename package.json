@@ -1,8 +1,8 @@
 {
   "name": "remote-local-network-share",
   "displayName": "Remote Local Network Share",
-  "description": "Share your local network with a VS Code Remote-SSH host through a loopback-only reverse SOCKS tunnel.",
-  "version": "0.1.4",
+  "description": "Share your local network with a VS Code Remote-SSH host through loopback-only SOCKS5 and HTTP proxy tunnels.",
+  "version": "0.1.5",
   "publisher": "dttutty",
   "icon": "assets/publisher-logo.png",
   "license": "MIT",
@@ -46,7 +46,9 @@
     "onCommand:localNetworkShare.start",
     "onCommand:localNetworkShare.stop",
     "onCommand:localNetworkShare.restart",
-    "onCommand:localNetworkShare.copyProxyEnvironment"
+    "onCommand:localNetworkShare.copyProxyEnvironment",
+    "onCommand:localNetworkShare.configureAptProxy",
+    "onCommand:localNetworkShare.showAdvancedTunGuide"
   ],
   "contributes": {
     "commands": [
@@ -69,6 +71,15 @@
         "command": "localNetworkShare.copyProxyEnvironment",
         "title": "Local Network Share: Copy Proxy Environment",
         "icon": "$(copy)"
+      },
+      {
+        "command": "localNetworkShare.configureAptProxy",
+        "title": "Local Network Share: Configure APT for sudo",
+        "icon": "$(package)"
+      },
+      {
+        "command": "localNetworkShare.showAdvancedTunGuide",
+        "title": "Local Network Share: Open Advanced Transparent TUN Guide"
       },
       {
         "command": "localNetworkShare.showOutput",
@@ -138,6 +149,13 @@
           "maximum": 65535,
           "description": "Loopback TCP port on the remote server where the SOCKS5 proxy listens."
         },
+        "localNetworkShare.httpProxyRemotePort": {
+          "type": "integer",
+          "default": 17891,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Loopback TCP port on the remote server where the HTTP CONNECT proxy listens."
+        },
         "localNetworkShare.sshPath": {
           "type": "string",
           "default": "ssh",
@@ -151,7 +169,7 @@
         "localNetworkShare.injectHttpProxyVariables": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Also set `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, and `https_proxy` to the SOCKS5 URL for newly created integrated terminals. Disable this for tools that require those variables to point to an HTTP CONNECT proxy."
+          "markdownDescription": "Set `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, and `https_proxy` to the extension's HTTP CONNECT endpoint for newly created integrated terminals."
         },
         "localNetworkShare.autoStart": {
           "type": "boolean",

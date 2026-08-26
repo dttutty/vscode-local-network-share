@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5
+
+- Add a loopback-only HTTP CONNECT bridge alongside the SOCKS5 endpoint for tools such as pip, Conda, and Wget.
+- Detect remote sudo access with a non-interactive read-only check and provide reviewable APT setup/removal commands.
+- Keep transparent TUN guidance out of the main sidebar and available only through an explicit Command Palette action.
+
 ## 0.1.4
 
 - Refine the Activity Bar icon and use the clear laptop-to-server tunnel design for the Marketplace icon.

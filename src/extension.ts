@@ -35,7 +35,11 @@ export function activate(context: vscode.ExtensionContext): void {
     output,
     manager,
     viewProvider,
-    vscode.window.registerTreeDataProvider('localNetworkShare.view', viewProvider),
+    vscode.window.registerWebviewViewProvider(
+      ShareViewProvider.viewType,
+      viewProvider,
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
   );
 
   const refreshPresentation = async () => {

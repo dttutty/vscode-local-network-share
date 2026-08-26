@@ -2,7 +2,7 @@
   "name": "remote-local-network-share",
   "displayName": "Remote Local Network Share",
   "description": "Share your local network with a VS Code Remote-SSH host through loopback-only SOCKS5 and HTTP proxy tunnels.",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "publisher": "dttutty",
   "icon": "assets/publisher-logo.png",
   "license": "MIT",
@@ -100,6 +100,7 @@
     "views": {
       "localNetworkShare": [
         {
+          "type": "webview",
           "id": "localNetworkShare.view",
           "name": "Share Status",
           "when": "remoteName == ssh-remote"
@@ -110,30 +111,6 @@
           "name": "Advanced TUN",
           "when": "remoteName == ssh-remote",
           "visibility": "collapsed"
-        }
-      ]
-    },
-    "menus": {
-      "view/title": [
-        {
-          "command": "localNetworkShare.start",
-          "when": "view == localNetworkShare.view && !localNetworkShare.running",
-          "group": "navigation@1"
-        },
-        {
-          "command": "localNetworkShare.stop",
-          "when": "view == localNetworkShare.view && localNetworkShare.running",
-          "group": "navigation@1"
-        },
-        {
-          "command": "localNetworkShare.restart",
-          "when": "view == localNetworkShare.view && localNetworkShare.running",
-          "group": "navigation@2"
-        },
-        {
-          "command": "localNetworkShare.showOutput",
-          "when": "view == localNetworkShare.view",
-          "group": "navigation@3"
         }
       ]
     },

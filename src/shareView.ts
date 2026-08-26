@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import {
   createAptInstallCommand,
@@ -7,260 +8,304 @@ import {
 } from './aptCommands';
 import type { TunnelState } from './tunnelManager';
 
-export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vscode.Disposable {
-  private readonly changeEmitter = new vscode.EventEmitter<ShareItem | undefined>();
-  private state: TunnelState = { phase: 'idle' };
-  private target: string | undefined;
-  private port = 17890;
-  private injectHttpProxyVariables = true;
+interface ShareViewState {
+  phase: TunnelState['phase'];
+  message?: string;
+  target?: string;
+  remotePort: number;
+  httpPort: number;
+  injectHttpProxyVariables: boolean;
+  aptCommands: {
+    update: string;
+    install: string;
+    persistent: string;
+    remove: string;
+  };
+}
 
-  readonly onDidChangeTreeData = this.changeEmitter.event;
+const ALLOWED_COMMANDS = new Set([
+  'localNetworkShare.start',
+  'localNetworkShare.stop',
+  'localNetworkShare.restart',
+  'localNetworkShare.copyProxyEnvironment',
+  'localNetworkShare.copyAptUpdate',
+  'localNetworkShare.copyAptInstall',
+  'localNetworkShare.copyAptPersistentSetup',
+  'localNetworkShare.copyAptPersistentRemoval',
+  'localNetworkShare.chooseSshTarget',
+  'localNetworkShare.showOutput',
+  'localNetworkShare.openSettings',
+  'localNetworkShare.openAdvancedTunSetup',
+]);
+
+export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
+  static readonly viewType = 'localNetworkShare.view';
+
+  private view: vscode.WebviewView | undefined;
+  private readonly disposables: vscode.Disposable[] = [];
+  private state = createShareViewState({ phase: 'idle' }, undefined, 17890, true);
+
+  resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.view = webviewView;
+    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.html = this.createHtml();
+    this.disposables.push(
+      webviewView.onDidDispose(() => {
+        if (this.view === webviewView) {
+          this.view = undefined;
+        }
+      }),
+      webviewView.webview.onDidReceiveMessage((message: unknown) => void this.handleMessage(message)),
+    );
+  }
 
   update(state: TunnelState, target: string | undefined, port: number, injectHttpProxyVariables: boolean): void {
-    this.state = state;
-    this.target = target;
-    this.port = port;
-    this.injectHttpProxyVariables = injectHttpProxyVariables;
-    this.changeEmitter.fire(undefined);
-  }
-
-  getTreeItem(element: ShareItem): vscode.TreeItem {
-    return element;
-  }
-
-  getChildren(element?: ShareItem): ShareItem[] {
-    if (element) {
-      return element.children ?? [];
-    }
-
-    const items: ShareItem[] = [this.statusItem(), this.targetItem()];
-
-    if (this.state.phase === 'active') {
-      const proxyUrl = `socks5h://127.0.0.1:${this.state.remotePort ?? this.port}`;
-      const httpProxyUrl = `http://127.0.0.1:${this.state.remoteHttpPort ?? this.port + 1}`;
-      items.push(
-        new ShareItem('SOCKS5 proxy', proxyUrl, new vscode.ThemeIcon('radio-tower')),
-        new ShareItem('HTTP proxy', httpProxyUrl, new vscode.ThemeIcon('globe')),
-        this.proxyCoverageItem(),
-        new ShareItem(
-          'Copy proxy environment',
-          undefined,
-          new vscode.ThemeIcon('copy'),
-          'localNetworkShare.copyProxyEnvironment',
-        ),
-        this.aptCommandsItem(),
-        new ShareItem(
-          'Stop sharing',
-          undefined,
-          new vscode.ThemeIcon('debug-stop'),
-          'localNetworkShare.stop',
-        ),
-      );
-    } else {
-      items.push(
-        new ShareItem(
-          'Start sharing',
-          undefined,
-          new vscode.ThemeIcon('debug-start'),
-          'localNetworkShare.start',
-        ),
-        new ShareItem('Proxy coverage', 'Inactive', new vscode.ThemeIcon('circle-outline')),
-      );
-    }
-
-    items.push(
-      new ShareItem('Open log', undefined, new vscode.ThemeIcon('output'), 'localNetworkShare.showOutput'),
-      new ShareItem('Settings', undefined, new vscode.ThemeIcon('gear'), 'localNetworkShare.openSettings'),
-      new ShareItem(
-        'Open Advanced TUN Setup…',
-        'Show in sidebar',
-        new vscode.ThemeIcon('server-environment'),
-        'localNetworkShare.openAdvancedTunSetup',
-      ),
-    );
-    return items;
-  }
-
-  private aptCommandsItem(): ShareItem {
-    const httpPort = this.state.remoteHttpPort ?? this.port + 1;
-    return new ShareItem(
-      'APT and sudo',
-      'Copy working commands',
-      new vscode.ThemeIcon('package'),
-      undefined,
-      [
-        copyCommandItem(
-          'Copy one-time apt update',
-          'No persistent changes',
-          'localNetworkShare.copyAptUpdate',
-          createOneTimeAptCommand(httpPort),
-        ),
-        copyCommandItem(
-          'Copy apt install command',
-          'Replace PACKAGE_NAME',
-          'localNetworkShare.copyAptInstall',
-          createAptInstallCommand(httpPort),
-        ),
-        copyCommandItem(
-          'Copy persistent APT setup',
-          'Applies while sharing is active',
-          'localNetworkShare.copyAptPersistentSetup',
-          createPersistentAptCommand(httpPort),
-        ),
-        copyCommandItem(
-          'Copy persistent setup removal',
-          undefined,
-          'localNetworkShare.copyAptPersistentRemoval',
-          REMOVE_PERSISTENT_APT_PROXY_COMMAND,
-          new vscode.ThemeIcon('trash'),
-        ),
-      ],
-    );
-  }
-
-  private proxyCoverageItem(): ShareItem {
-    const typicalToolStatus = this.injectHttpProxyVariables
-      ? 'Usually covered'
-      : 'SOCKS support varies';
-    const typicalToolIcon = this.injectHttpProxyVariables
-      ? new vscode.ThemeIcon('pass-filled')
-      : new vscode.ThemeIcon('warning');
-    const item = new ShareItem(
-      'Proxy coverage',
-      'New terminals only',
-      new vscode.ThemeIcon('list-tree'),
-      undefined,
-      [
-        tooltipItem(
-          'New VS Code terminals',
-          'Proxy environment injected',
-          new vscode.ThemeIcon('pass-filled'),
-          'The extension injects proxy variables when a new integrated terminal is created. It does not modify terminals that were already open.',
-        ),
-        tooltipItem(
-          'curl, pip, uv, Conda',
-          typicalToolStatus,
-          typicalToolIcon,
-          this.environmentCoverageExplanation('These tools normally read standard proxy environment variables, but the extension cannot inspect whether each running process accepted them.'),
-        ),
-        tooltipItem(
-          'npm, Wget, Homebrew',
-          typicalToolStatus,
-          typicalToolIcon,
-          this.environmentCoverageExplanation('These tools normally support HTTP proxy environment variables. Per-tool configuration can override the injected values.'),
-        ),
-        tooltipItem(
-          'Existing terminals',
-          'Reopen or copy environment',
-          new vscode.ThemeIcon('warning'),
-          'Existing terminal processes keep their old environment. Reopen the terminal or use Copy proxy environment.',
-          'localNetworkShare.copyProxyEnvironment',
-        ),
-        tooltipItem(
-          'APT and sudo',
-          'Manual command required',
-          new vscode.ThemeIcon('warning'),
-          'sudo commonly removes proxy variables, and APT needs an explicit HTTP proxy option or configuration. Select this item to copy a safe command.',
-          'localNetworkShare.configureAptProxy',
-        ),
-        tooltipItem(
-          'Docker daemon, systemd, cron',
-          'Not managed',
-          new vscode.ThemeIcon('circle-slash'),
-          'System services do not inherit the integrated terminal environment and require their own proxy configuration.',
-        ),
-        tooltipItem(
-          'Apps ignoring proxy variables',
-          'Not managed',
-          new vscode.ThemeIcon('circle-slash'),
-          'Programs that ignore proxy settings need application-specific configuration or a separately reviewed Advanced TUN setup.',
-          'localNetworkShare.openAdvancedTunSetup',
-        ),
-      ],
-    );
-    item.tooltip = 'Coverage is inferred from the environment the extension controls; it is not live process inspection.';
-    return item;
-  }
-
-  private environmentCoverageExplanation(base: string): string {
-    return this.injectHttpProxyVariables
-      ? `${base} HTTP_PROXY, HTTPS_PROXY, and ALL_PROXY are enabled for new terminals.`
-      : `${base} HTTP proxy variables are disabled in settings, so only ALL_PROXY is injected and compatibility varies.`;
+    this.state = createShareViewState(state, target, port, injectHttpProxyVariables);
+    void this.view?.webview.postMessage({ type: 'state', state: this.state });
   }
 
   dispose(): void {
-    this.changeEmitter.dispose();
+    while (this.disposables.length > 0) {
+      this.disposables.pop()?.dispose();
+    }
   }
 
-  private statusItem(): ShareItem {
-    const presentation: Record<TunnelState['phase'], { label: string; icon: vscode.ThemeIcon }> = {
-      idle: { label: 'Not sharing', icon: new vscode.ThemeIcon('circle-outline') },
-      starting: { label: 'Starting…', icon: new vscode.ThemeIcon('loading~spin') },
-      active: { label: 'Sharing is active', icon: new vscode.ThemeIcon('pass-filled') },
-      stopping: { label: 'Stopping…', icon: new vscode.ThemeIcon('loading~spin') },
-      error: { label: 'Tunnel error', icon: new vscode.ThemeIcon('error') },
+  private async handleMessage(message: unknown): Promise<void> {
+    if (!message || typeof message !== 'object' || !('type' in message)) {
+      return;
+    }
+    const typed = message as { type: unknown; command?: unknown };
+    if (typed.type !== 'command' || typeof typed.command !== 'string' || !ALLOWED_COMMANDS.has(typed.command)) {
+      return;
+    }
+    try {
+      await vscode.commands.executeCommand(typed.command);
+    } catch (error) {
+      void this.view?.webview.postMessage({
+        type: 'notice',
+        error: true,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private createHtml(): string {
+    const nonce = randomBytes(16).toString('base64');
+    const initialState = JSON.stringify(this.state).replace(/</gu, '\\u003c');
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+  <title>Local Network Share</title>
+  <style nonce="${nonce}">
+    :root { color-scheme: light dark; }
+    body { margin: 0; padding: 12px; color: var(--vscode-foreground); background: var(--vscode-sideBar-background); font-family: var(--vscode-font-family); }
+    main { display: grid; gap: 12px; }
+    .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
+    .hero { display: grid; gap: 12px; }
+    .status-line, .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .status-title { font-size: 16px; font-weight: 700; }
+    .pill, .badge { padding: 3px 8px; border-radius: 999px; font-size: 11px; white-space: nowrap; }
+    .idle { color: var(--vscode-descriptionForeground); background: var(--vscode-editorWidget-background); }
+    .working, .manual { color: var(--vscode-editorWarning-foreground); background: var(--vscode-inputValidation-warningBackground); }
+    .active, .covered { color: var(--vscode-testing-iconPassed); background: color-mix(in srgb, var(--vscode-testing-iconPassed) 12%, transparent); }
+    .error, .unmanaged { color: var(--vscode-testing-iconFailed); background: color-mix(in srgb, var(--vscode-testing-iconFailed) 12%, transparent); }
+    .target { display: grid; gap: 4px; }
+    .label { color: var(--vscode-descriptionForeground); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    .value { overflow-wrap: anywhere; font-weight: 600; }
+    .description { color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.45; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { padding: 7px 12px; border: 0; border-radius: 3px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); cursor: pointer; }
+    button:hover { background: var(--vscode-button-hoverBackground); }
+    button.secondary { color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); }
+    button.secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
+    button.link { padding: 0; color: var(--vscode-textLink-foreground); background: transparent; text-align: left; }
+    button.link:hover { color: var(--vscode-textLink-activeForeground); background: transparent; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .endpoints { display: none; grid-template-columns: 1fr; gap: 8px; }
+    code { display: block; padding: 7px 8px; overflow-wrap: anywhere; color: var(--vscode-textPreformat-foreground); background: var(--vscode-textCodeBlock-background); border-radius: 3px; font-family: var(--vscode-editor-font-family); font-size: 11px; }
+    details summary { cursor: pointer; font-weight: 700; }
+    details[open] summary { margin-bottom: 10px; }
+    .coverage { display: grid; }
+    .coverage .row { align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--vscode-widget-border); }
+    .coverage .row:last-child { border-bottom: 0; }
+    .item-title { font-weight: 600; }
+    .item-copy { min-width: 0; }
+    .apt-grid { display: grid; gap: 8px; }
+    .apt-grid button { width: 100%; text-align: left; }
+    .notice { min-height: 16px; color: var(--vscode-descriptionForeground); font-size: 12px; }
+    .notice.error { color: var(--vscode-errorForeground); }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card hero">
+      <div class="status-line">
+        <span class="status-title">Network sharing</span>
+        <span id="status" class="pill idle">Not sharing</span>
+      </div>
+      <div class="target">
+        <span class="label">SSH target</span>
+        <button id="target" class="link">Select host…</button>
+      </div>
+      <div id="message" class="description"></div>
+      <div class="actions">
+        <button id="start" data-command="localNetworkShare.start">Start sharing</button>
+        <button id="stop" data-command="localNetworkShare.stop">Stop sharing</button>
+        <button id="restart" class="secondary" data-command="localNetworkShare.restart">Restart</button>
+      </div>
+      <div id="endpoints" class="endpoints">
+        <div><span class="label">SOCKS5</span><code id="socks"></code></div>
+        <div><span class="label">HTTP CONNECT</span><code id="http"></code></div>
+      </div>
+    </section>
+
+    <details class="card" open>
+      <summary>Proxy coverage</summary>
+      <p id="coverageNote" class="description"></p>
+      <div id="coverage" class="coverage">
+        <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">New VS Code terminals</div><div class="description">Proxy environment is injected when the terminal is created.</div></div>
+          <span class="badge covered">Environment ready</span>
+        </div>
+        <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">curl, pip, uv, Conda</div><div class="description">Normally read standard proxy variables; per-tool settings can override them.</div></div>
+          <span class="badge typical covered">Usually covered</span>
+        </div>
+        <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">npm, Wget, Homebrew</div><div class="description">Normally use HTTP proxy variables in newly created terminals.</div></div>
+          <span class="badge typical covered">Usually covered</span>
+        </div>
+        <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">Existing terminals</div><div class="description">Reopen them or copy the environment manually.</div></div>
+          <button class="link badge manual" data-command="localNetworkShare.copyProxyEnvironment">Action needed</button>
+        </div>
+        <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">APT and sudo</div><div class="description">sudo commonly removes proxy variables; APT needs an explicit option.</div></div>
+          <button class="link badge manual" data-command="localNetworkShare.copyAptUpdate">Manual setup</button>
+        </div>
+        <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">Docker daemon, systemd, cron</div><div class="description">System services require their own proxy configuration.</div></div>
+          <span class="badge unmanaged">Not managed</span>
+        </div>
+        <div class="row" data-coverage="active">
+          <div class="item-copy"><div class="item-title">Apps ignoring proxy variables</div><div class="description">Use application-specific settings or review Advanced TUN.</div></div>
+          <button class="link badge unmanaged" data-command="localNetworkShare.openAdvancedTunSetup">Not managed</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>APT and sudo commands</summary>
+      <p class="description">Commands are copied for review; the extension never runs sudo automatically.</p>
+      <div class="apt-grid">
+        <button class="secondary apt-action" data-command="localNetworkShare.copyAptUpdate" data-apt="update">Copy one-time apt update</button>
+        <button class="secondary apt-action" data-command="localNetworkShare.copyAptInstall" data-apt="install">Copy apt install command</button>
+        <button class="secondary apt-action" data-command="localNetworkShare.copyAptPersistentSetup" data-apt="persistent">Copy persistent APT setup</button>
+        <button class="secondary apt-action" data-command="localNetworkShare.copyAptPersistentRemoval" data-apt="remove">Copy persistent setup removal</button>
+      </div>
+    </details>
+
+    <section class="card">
+      <div class="actions">
+        <button class="secondary" data-command="localNetworkShare.showOutput">Open log</button>
+        <button class="secondary" data-command="localNetworkShare.openSettings">Settings</button>
+        <button class="secondary" data-command="localNetworkShare.openAdvancedTunSetup">Advanced TUN</button>
+      </div>
+      <div id="notice" class="notice" role="status"></div>
+    </section>
+  </main>
+
+  <script nonce="${nonce}">
+    const vscode = acquireVsCodeApi();
+    let state = ${initialState};
+    const phasePresentation = {
+      idle: ['Not sharing', 'idle'],
+      starting: ['Starting…', 'working'],
+      active: ['Sharing', 'active'],
+      stopping: ['Stopping…', 'working'],
+      error: ['Error', 'error'],
     };
-    const current = presentation[this.state.phase];
-    const item = new ShareItem('Status', current.label, current.icon);
-    if (this.state.message) {
-      item.tooltip = this.state.message;
+
+    function render(next) {
+      state = next;
+      const active = state.phase === 'active';
+      const busy = state.phase === 'starting' || state.phase === 'stopping';
+      const presentation = phasePresentation[state.phase];
+      const status = document.getElementById('status');
+      status.textContent = presentation[0];
+      status.className = 'pill ' + presentation[1];
+      document.getElementById('target').textContent = state.target || 'Select host…';
+      document.getElementById('message').textContent = state.message || (active ? 'New integrated terminals receive the proxy environment.' : 'Start sharing to make the local network available on this SSH host.');
+      document.getElementById('start').style.display = state.phase === 'idle' || state.phase === 'error' ? '' : 'none';
+      document.getElementById('stop').style.display = active || state.phase === 'stopping' ? '' : 'none';
+      document.getElementById('restart').style.display = active ? '' : 'none';
+      document.getElementById('start').disabled = busy;
+      document.getElementById('stop').disabled = busy;
+      document.getElementById('endpoints').style.display = active ? 'grid' : 'none';
+      document.getElementById('socks').textContent = 'socks5h://127.0.0.1:' + state.remotePort;
+      document.getElementById('http').textContent = 'http://127.0.0.1:' + state.httpPort;
+      document.getElementById('coverageNote').textContent = active
+        ? 'Inferred from the environment controlled by this extension; not live process inspection.'
+        : 'Inactive. Start sharing to inject proxy settings into new VS Code terminals.';
+      document.querySelectorAll('[data-coverage="active"]').forEach(element => {
+        element.style.display = active ? 'flex' : 'none';
+      });
+      document.querySelectorAll('.typical').forEach(element => {
+        element.textContent = state.injectHttpProxyVariables ? 'Usually covered' : 'SOCKS support varies';
+        element.className = 'badge typical ' + (state.injectHttpProxyVariables ? 'covered' : 'manual');
+      });
+      document.querySelectorAll('.apt-action').forEach(element => {
+        element.disabled = !active;
+        element.title = state.aptCommands[element.dataset.apt];
+      });
     }
-    return item;
-  }
 
-  private targetItem(): ShareItem {
-    return new ShareItem(
-      'SSH target',
-      this.state.target ?? this.target ?? 'Select host…',
-      new vscode.ThemeIcon('remote'),
-      this.state.target || this.target ? undefined : 'localNetworkShare.chooseSshTarget',
-    );
-  }
-}
-
-class ShareItem extends vscode.TreeItem {
-  constructor(
-    label: string,
-    description: string | undefined,
-    icon: vscode.ThemeIcon,
-    commandId?: string,
-    readonly children?: ShareItem[],
-  ) {
-    super(
-      label,
-      children ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
-    );
-    this.description = description;
-    this.iconPath = icon;
-    if (commandId) {
-      this.command = { command: commandId, title: label };
+    function runCommand(command) {
+      vscode.postMessage({ type: 'command', command });
     }
+
+    document.querySelectorAll('[data-command]').forEach(element => {
+      element.addEventListener('click', () => runCommand(element.dataset.command));
+    });
+    document.getElementById('target').addEventListener('click', () => runCommand('localNetworkShare.chooseSshTarget'));
+    window.addEventListener('message', event => {
+      if (event.data?.type === 'state') render(event.data.state);
+      if (event.data?.type === 'notice') {
+        const notice = document.getElementById('notice');
+        notice.textContent = event.data.message;
+        notice.className = 'notice' + (event.data.error ? ' error' : '');
+      }
+    });
+    render(state);
+  </script>
+</body>
+</html>`;
   }
 }
 
-function copyCommandItem(
-  label: string,
-  description: string | undefined,
-  commandId: string,
-  commandText: string,
-  icon = new vscode.ThemeIcon('copy'),
-): ShareItem {
-  const item = new ShareItem(label, description, icon, commandId);
-  const tooltip = new vscode.MarkdownString();
-  tooltip.appendMarkdown('Copies this command:\n\n');
-  tooltip.appendCodeblock(commandText, 'shell');
-  item.tooltip = tooltip;
-  return item;
-}
-
-function tooltipItem(
-  label: string,
-  description: string,
-  icon: vscode.ThemeIcon,
-  tooltip: string,
-  commandId?: string,
-): ShareItem {
-  const item = new ShareItem(label, description, icon, commandId);
-  item.tooltip = tooltip;
-  return item;
+function createShareViewState(
+  state: TunnelState,
+  target: string | undefined,
+  port: number,
+  injectHttpProxyVariables: boolean,
+): ShareViewState {
+  const remotePort = state.remotePort ?? port;
+  const httpPort = state.remoteHttpPort ?? port + 1;
+  return {
+    phase: state.phase,
+    message: state.message,
+    target: state.target ?? target,
+    remotePort,
+    httpPort,
+    injectHttpProxyVariables,
+    aptCommands: {
+      update: createOneTimeAptCommand(httpPort),
+      install: createAptInstallCommand(httpPort),
+      persistent: createPersistentAptCommand(httpPort),
+      remove: REMOVE_PERSISTENT_APT_PROXY_COMMAND,
+    },
+  };
 }

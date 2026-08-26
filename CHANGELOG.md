@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- Replace the native Share Status tree with a custom Sidebar Webview dashboard for connection state, target selection, Start/Stop, proxy endpoints, coverage, APT actions, logs, settings, and Advanced TUN.
+- Remove duplicate native view-title action icons and present explanations and actions in context.
+
 ## 0.1.9
 
 - Add an expandable Proxy coverage section showing which common tools are usually covered in new terminals, which require manual configuration, and which are not managed.

@@ -45,6 +45,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const refreshPresentation = async () => {
     const settings = readSettings();
     const target = resolveSshTarget(settings.sshTarget);
+    const remoteWorkspace = getRemoteWorkspaceStatus();
     viewProvider.update(
       manager.currentState,
       target,
@@ -52,6 +53,7 @@ export function activate(context: vscode.ExtensionContext): void {
       settings.httpProxyRemotePort,
       settings.injectHttpProxyVariables,
       getRemoteSshCompatibility(),
+      remoteWorkspace,
     );
     advancedTunView.update(createAdvancedTunViewState(manager, settings, target));
     await vscode.commands.executeCommand(
@@ -80,7 +82,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.commands.executeCommand('localNetworkShare.stop');
       },
       checkRequirements: async () => {
-        if (!ensureRemoteSshWindow()) {
+        if (!ensureRemoteWorkspace()) {
           return;
         }
         const currentSettings = readSettings();
@@ -115,13 +117,14 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
     vscode.extensions.onDidChange(() => void refreshPresentation()),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => void refreshPresentation()),
     vscode.commands.registerCommand('localNetworkShare.start', async () => {
       const remoteSsh = getRemoteSshCompatibility();
       if (!remoteSsh.compatible) {
         void vscode.window.showErrorMessage(remoteSsh.message);
         return;
       }
-      if (!ensureRemoteSshWindow()) {
+      if (!ensureRemoteWorkspace()) {
         return;
       }
 
@@ -243,6 +246,9 @@ export function activate(context: vscode.ExtensionContext): void {
       viewProvider.showTun();
     }),
     vscode.commands.registerCommand('localNetworkShare.chooseSshTarget', async () => {
+      if (!ensureRemoteWorkspace()) {
+        return;
+      }
       const target = await chooseAndSaveSshTarget();
       if (target) {
         await refreshPresentation();
@@ -279,12 +285,29 @@ export async function deactivate(): Promise<void> {
   tunnelManager = undefined;
 }
 
-function ensureRemoteSshWindow(): boolean {
-  if (vscode.env.remoteName === 'ssh-remote') {
+function ensureRemoteWorkspace(): boolean {
+  const status = getRemoteWorkspaceStatus();
+  if (status.ready) {
     return true;
   }
-  void vscode.window.showErrorMessage('Local Network Share currently supports VS Code Remote-SSH windows only.');
+  void vscode.window.showErrorMessage(status.message);
   return false;
+}
+
+function getRemoteWorkspaceStatus(): { ready: boolean; message: string } {
+  if (vscode.env.remoteName !== 'ssh-remote') {
+    return {
+      ready: false,
+      message: 'Open a folder on the target server in a VS Code Remote-SSH window before starting Local Network Share.',
+    };
+  }
+  if (!vscode.workspace.workspaceFolders?.length) {
+    return {
+      ready: false,
+      message: 'No remote folder is open. Open a folder on the connected Remote-SSH host so Local Network Share can identify the target automatically.',
+    };
+  }
+  return { ready: true, message: '' };
 }
 
 function resolveSshTarget(configuredTarget: string): string | undefined {

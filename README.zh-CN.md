@@ -77,10 +77,11 @@ SOCKS5h，HTTP 相关变量使用 HTTP 端点。代理环境变量并不是所�
 
 ## SSH 目标检测
 
-扩展通常会根据当前远程工作区 URI 自动推断 SSH 配置别名。空的 Remote-SSH
-窗口可能不会向扩展提供这个别名。此时可以点击侧栏中的 **SSH target: Select
-host…**，或直接启动共享，然后输入 Remote-SSH 中选择的同一主机；扩展会保存
-选择供以后使用。也可以直接设置 `localNetworkShare.sshTarget`，例如：
+扩展通常会根据当前远程工作区 URI 自动推断 SSH 配置别名。请先在目标服务器上
+打开一个文件夹；空的 Remote-SSH 窗口不会提供足够信息供扩展可靠识别目标，
+因此侧栏会显示 **Remote folder required** 并禁用 Start，而不会让普通用户输入
+陌生的 alias。如果已经打开远端工作区但仍无法推断，高级用户可以点击
+**SSH target**，或直接设置 `localNetworkShare.sshTarget`，例如：
 
 ```json
 {

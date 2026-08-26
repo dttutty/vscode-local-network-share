@@ -22,6 +22,10 @@ interface ShareViewState {
     installedVersion?: string;
     message: string;
   };
+  remoteWorkspace: {
+    ready: boolean;
+    message: string;
+  };
   aptCommands: {
     update: string;
     upgrade: string;
@@ -59,6 +63,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     17891,
     true,
     { compatible: false, message: 'Remote Local Network Share requires Remote - SSH 0.126.0 or newer.' },
+    { ready: false, message: 'Open a folder on the target server in a Remote-SSH window.' },
   );
   private mode: 'basic' | 'tun' = 'basic';
 
@@ -92,8 +97,9 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     httpPort: number,
     injectHttpProxyVariables: boolean,
     remoteSsh: ShareViewState['remoteSsh'],
+    remoteWorkspace: ShareViewState['remoteWorkspace'],
   ): void {
-    this.state = createShareViewState(state, target, port, httpPort, injectHttpProxyVariables, remoteSsh);
+    this.state = createShareViewState(state, target, port, httpPort, injectHttpProxyVariables, remoteSsh, remoteWorkspace);
     if (this.mode === 'basic') {
       void this.view?.webview.postMessage({ type: 'state', state: this.state });
     }
@@ -230,6 +236,10 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       <strong>Remote - SSH update required</strong>
       <span id="dependencyMessage"></span>
     </div>
+    <div id="workspaceWarning" class="dependency-warning" role="alert" hidden>
+      <strong>Remote folder required</strong>
+      <span id="workspaceMessage"></span>
+    </div>
     <section class="card hero">
       <div class="status-line">
         <span class="status-title">Network sharing</span>
@@ -345,15 +355,18 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
       const status = document.getElementById('status');
       status.textContent = presentation[0];
       status.className = 'pill ' + presentation[1];
-      document.getElementById('target').textContent = state.target || 'Select host…';
+      document.getElementById('target').textContent = state.remoteWorkspace.ready ? (state.target || 'Select host…') : 'No remote folder open';
+      document.getElementById('target').disabled = !state.remoteWorkspace.ready;
       document.getElementById('message').textContent = state.message || (active ? 'New integrated terminals receive the proxy environment.' : 'Start sharing to make the local network available on this SSH host.');
       document.getElementById('dependencyWarning').hidden = state.remoteSsh.compatible;
       document.getElementById('dependencyMessage').textContent = state.remoteSsh.message;
+      document.getElementById('workspaceWarning').hidden = state.remoteWorkspace.ready;
+      document.getElementById('workspaceMessage').textContent = state.remoteWorkspace.message;
       document.getElementById('howItWorks').hidden = state.phase !== 'idle' && state.phase !== 'error';
       document.getElementById('start').style.display = state.phase === 'idle' || state.phase === 'error' ? '' : 'none';
       document.getElementById('stop').style.display = active || state.phase === 'stopping' ? '' : 'none';
       document.getElementById('restart').style.display = active ? '' : 'none';
-      document.getElementById('start').disabled = busy || !state.remoteSsh.compatible;
+      document.getElementById('start').disabled = busy || !state.remoteSsh.compatible || !state.remoteWorkspace.ready;
       document.getElementById('stop').disabled = busy;
       document.getElementById('endpoints').style.display = active ? 'grid' : 'none';
       document.getElementById('coverageSection').hidden = !active;
@@ -406,6 +419,7 @@ function createShareViewState(
   configuredHttpPort: number,
   injectHttpProxyVariables: boolean,
   remoteSsh: ShareViewState['remoteSsh'],
+  remoteWorkspace: ShareViewState['remoteWorkspace'],
 ): ShareViewState {
   const remotePort = state.remotePort ?? port;
   const httpPort = state.remoteHttpPort ?? configuredHttpPort;
@@ -417,6 +431,7 @@ function createShareViewState(
     httpPort,
     injectHttpProxyVariables,
     remoteSsh,
+    remoteWorkspace,
     aptCommands: {
       update: createOneTimeAptCommand(httpPort),
       upgrade: createAptUpgradeCommand(httpPort),

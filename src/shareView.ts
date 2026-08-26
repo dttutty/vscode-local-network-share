@@ -5,13 +5,11 @@ import {
   createPersistentAptCommand,
   REMOVE_PERSISTENT_APT_PROXY_COMMAND,
 } from './aptCommands';
-import type { CapabilityProbeState } from './remoteCapabilities';
 import type { TunnelState } from './tunnelManager';
 
 export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<ShareItem | undefined>();
   private state: TunnelState = { phase: 'idle' };
-  private capabilities: CapabilityProbeState = { phase: 'idle' };
   private target: string | undefined;
   private port = 17890;
 
@@ -21,11 +19,6 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
     this.state = state;
     this.target = target;
     this.port = port;
-    this.changeEmitter.fire(undefined);
-  }
-
-  updateCapabilities(capabilities: CapabilityProbeState): void {
-    this.capabilities = capabilities;
     this.changeEmitter.fire(undefined);
   }
 
@@ -79,7 +72,12 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
     items.push(
       new ShareItem('Open log', undefined, new vscode.ThemeIcon('output'), 'localNetworkShare.showOutput'),
       new ShareItem('Settings', undefined, new vscode.ThemeIcon('gear'), 'localNetworkShare.openSettings'),
-      this.advancedTunItem(),
+      new ShareItem(
+        'Open Advanced TUN Setup…',
+        'Separate guided interface',
+        new vscode.ThemeIcon('server-environment'),
+        'localNetworkShare.openAdvancedTunSetup',
+      ),
     );
     return items;
   }
@@ -119,90 +117,6 @@ export class ShareViewProvider implements vscode.TreeDataProvider<ShareItem>, vs
         ),
       ],
     );
-  }
-
-  private advancedTunItem(): ShareItem {
-    const children = [
-      ...this.advancedCapabilityItems(),
-      new ShareItem(
-        'Open guided setup…',
-        'Safety confirmation required',
-        new vscode.ThemeIcon('book'),
-        'localNetworkShare.showAdvancedTunGuide',
-      ),
-    ];
-    const item = new ShareItem(
-      'Advanced TUN mode',
-      this.advancedTunSummary(),
-      new vscode.ThemeIcon('warning'),
-      undefined,
-      children,
-    );
-    item.tooltip = 'Advanced TUN mode is optional. It can make applications ignore proxy settings, but an incorrect route can disconnect SSH.';
-    return item;
-  }
-
-  private advancedCapabilityItems(): ShareItem[] {
-    if (this.capabilities.phase === 'checking') {
-      return [new ShareItem('Checking server readiness…', undefined, new vscode.ThemeIcon('loading~spin'))];
-    }
-    if (this.capabilities.phase !== 'ready') {
-      return [
-        new ShareItem(
-          'Check server readiness',
-          this.state.phase === 'active' ? undefined : 'Starts sharing first',
-          new vscode.ThemeIcon('search'),
-          this.state.phase === 'active' ? 'localNetworkShare.checkAdvancedTunRequirements' : 'localNetworkShare.start',
-        ),
-      ];
-    }
-
-    const { capabilities } = this.capabilities;
-    const missingItems: ShareItem[] = [];
-    if (capabilities.sudoAccess !== 'member' && capabilities.sudoAccess !== 'passwordless') {
-      missingItems.push(new ShareItem('Administrator access needed', 'sudo was not detected', new vscode.ThemeIcon('circle-slash')));
-    }
-    if (!capabilities.tunDevice) {
-      missingItems.push(new ShareItem('TUN device unavailable', '/dev/net/tun was not detected', new vscode.ThemeIcon('circle-slash')));
-    }
-    if (!capabilities.tun2socks) {
-      missingItems.push(new ShareItem('Proxy helper needed', 'tun2socks was not detected', new vscode.ThemeIcon('circle-slash')));
-    }
-    if (!capabilities.ipCommand) {
-      missingItems.push(new ShareItem('Networking tools needed', 'ip command was not detected', new vscode.ThemeIcon('circle-slash')));
-    }
-
-    return [
-      new ShareItem(
-        missingItems.length === 0 ? 'Server is ready' : 'Setup is incomplete',
-        missingItems.length === 0 ? 'Continue with guided setup' : `${missingItems.length} requirement${missingItems.length === 1 ? '' : 's'} missing`,
-        new vscode.ThemeIcon(missingItems.length === 0 ? 'pass-filled' : 'info'),
-      ),
-      ...missingItems,
-      new ShareItem(
-        'Check again',
-        undefined,
-        new vscode.ThemeIcon('refresh'),
-        'localNetworkShare.checkAdvancedTunRequirements',
-      ),
-    ];
-  }
-
-  private advancedTunSummary(): string {
-    if (this.capabilities.phase === 'checking') {
-      return 'Checking…';
-    }
-    if (this.capabilities.phase !== 'ready') {
-      return 'Optional';
-    }
-    const { capabilities } = this.capabilities;
-    const missingCount = [
-      capabilities.sudoAccess !== 'member' && capabilities.sudoAccess !== 'passwordless',
-      !capabilities.tunDevice,
-      !capabilities.tun2socks,
-      !capabilities.ipCommand,
-    ].filter(Boolean).length;
-    return missingCount === 0 ? 'Ready for guided setup' : `Needs ${missingCount} more thing${missingCount === 1 ? '' : 's'}`;
   }
 
   dispose(): void {

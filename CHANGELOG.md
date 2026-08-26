@@ -4,9 +4,8 @@
 
 - Add a loopback-only HTTP CONNECT bridge alongside the SOCKS5 endpoint for tools such as pip, Conda, and Wget.
 - Detect remote sudo access with a non-interactive read-only check and provide reviewable APT setup/removal commands.
-- Put transparent TUN risk information, capability checks, and setup guidance in an expandable bottom-of-sidebar section protected by an explicit physical/BMC-access warning; remove its Command Palette entry.
+- Move Advanced TUN out of the native tree into a dedicated Webview setup page with safety confirmation, friendly readiness cards, routing/interface/MTU/DNS options, rechecking, and a reviewable plan.
 - Replace the unclear missing-target error with an inline SSH host picker that saves the user's Remote-SSH alias and continues startup.
-- Simplify the Advanced TUN sidebar into a task-oriented readiness summary that shows only missing requirements and the next actions.
 - Add an APT and sudo sidebar section with one-click copy actions for update, install, persistent proxy setup, and removal without relying on `sudo -E`.
 - Show the exact generated shell command in a hover tooltip for every APT copy action.
 

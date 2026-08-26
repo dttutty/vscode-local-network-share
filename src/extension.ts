@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { AdvancedTunPanel, type AdvancedTunPanelState } from './advancedTunPanel';
 import {
   createAptInstallCommand,
   createOneTimeAptCommand,
@@ -17,11 +18,14 @@ import { TunnelManager } from './tunnelManager';
 let tunnelManager: TunnelManager | undefined;
 let capabilityProbeGeneration = 0;
 let lastCapabilities: RemoteCapabilities | undefined;
+let capabilityProbeChecking = false;
+let capabilityProbeError: string | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel('Local Network Share');
   const manager = new TunnelManager(output, context.environmentVariableCollection);
   const viewProvider = new ShareViewProvider();
+  let advancedTunPanel: AdvancedTunPanel | undefined;
   tunnelManager = manager;
 
   context.subscriptions.push(
@@ -35,11 +39,18 @@ export function activate(context: vscode.ExtensionContext): void {
     const settings = readSettings();
     const target = resolveSshTarget(settings.sshTarget);
     viewProvider.update(manager.currentState, target, settings.remotePort);
+    advancedTunPanel?.update(createAdvancedTunPanelState(manager, settings, target));
     await vscode.commands.executeCommand(
       'setContext',
       'localNetworkShare.running',
       manager.currentState.phase === 'active' || manager.currentState.phase === 'starting',
     );
+  };
+
+  const runCapabilityCheck = async (settings: ReturnType<typeof readSettings>, target: string) => {
+    await refreshRemoteCapabilities(settings, target, output, () => {
+      advancedTunPanel?.update(createAdvancedTunPanelState(manager, readSettings(), target));
+    });
   };
 
   context.subscriptions.push(
@@ -76,7 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
         void vscode.window.showInformationMessage(
           `Local network sharing is active. SOCKS5: 127.0.0.1:${settings.remotePort}; HTTP: 127.0.0.1:${settings.httpProxyRemotePort}. Open a new terminal to use it.`,
         );
-        void refreshRemoteCapabilities(settings, target, output, viewProvider);
+        void runCapabilityCheck(settings, target);
       } catch (error) {
         output.show(true);
         void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
@@ -85,8 +96,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('localNetworkShare.stop', async () => {
       ++capabilityProbeGeneration;
       lastCapabilities = undefined;
-      viewProvider.updateCapabilities({ phase: 'idle' });
+      capabilityProbeChecking = false;
+      capabilityProbeError = undefined;
       await manager.stop();
+      advancedTunPanel?.update(createAdvancedTunPanelState(manager, readSettings()));
       void vscode.window.showInformationMessage('Local network sharing stopped. Open terminals keep their existing environment until closed.');
     }),
     vscode.commands.registerCommand('localNetworkShare.restart', async () => {
@@ -151,7 +164,7 @@ export function activate(context: vscode.ExtensionContext): void {
         'Persistent APT proxy removal command copied.',
       );
     }),
-    vscode.commands.registerCommand('localNetworkShare.showAdvancedTunGuide', async () => {
+    vscode.commands.registerCommand('localNetworkShare.openAdvancedTunSetup', async () => {
       const confirmation = await vscode.window.showWarningMessage(
         'Advanced TUN mode can change network routes. In rare cases, it may make this server unreachable over SSH. Continue only if you have physical access to the server or out-of-band management such as BMC/IPMI/iDRAC/iLO.',
         { modal: true },
@@ -160,24 +173,34 @@ export function activate(context: vscode.ExtensionContext): void {
       if (confirmation !== 'I have physical/BMC access') {
         return;
       }
-      const document = await vscode.workspace.openTextDocument({
-        language: 'markdown',
-        content: createAdvancedTunGuide(lastCapabilities, readSettings().remotePort),
-      });
-      await vscode.window.showTextDocument(document, { preview: true });
-    }),
-    vscode.commands.registerCommand('localNetworkShare.checkAdvancedTunRequirements', async () => {
-      if (!ensureRemoteSshWindow() || manager.currentState.phase !== 'active') {
-        void vscode.window.showInformationMessage('Start local network sharing before checking advanced TUN requirements.');
-        return;
-      }
       const settings = readSettings();
-      const target = resolveSshTarget(settings.sshTarget);
-      if (!target) {
-        void vscode.window.showErrorMessage('Could not infer the SSH destination for the requirements check.');
-        return;
+      const target = manager.currentState.target ?? resolveSshTarget(settings.sshTarget);
+      if (advancedTunPanel) {
+        advancedTunPanel.update(createAdvancedTunPanelState(manager, settings, target));
+        advancedTunPanel.reveal();
+      } else {
+        advancedTunPanel = new AdvancedTunPanel(
+          createAdvancedTunPanelState(manager, settings, target),
+          {
+            startSharing: async () => {
+              await vscode.commands.executeCommand('localNetworkShare.start');
+            },
+            checkRequirements: async () => {
+              if (!ensureRemoteSshWindow() || manager.currentState.phase !== 'active') {
+                throw new Error('Start local network sharing before checking the server.');
+              }
+              const currentSettings = readSettings();
+              const currentTarget = manager.currentState.target ?? resolveSshTarget(currentSettings.sshTarget);
+              if (!currentTarget) {
+                throw new Error('Select the Remote-SSH host in the Local Network Share sidebar first.');
+              }
+              await runCapabilityCheck(currentSettings, currentTarget);
+            },
+          },
+          () => { advancedTunPanel = undefined; },
+        );
+        context.subscriptions.push(advancedTunPanel);
       }
-      await refreshRemoteCapabilities(settings, target, output, viewProvider);
     }),
     vscode.commands.registerCommand('localNetworkShare.chooseSshTarget', async () => {
       const target = await chooseAndSaveSshTarget();
@@ -303,24 +326,29 @@ async function refreshRemoteCapabilities(
   settings: RemoteCapabilityProbeConfiguration,
   target: string,
   output: vscode.OutputChannel,
-  viewProvider: ShareViewProvider,
+  onUpdate?: () => void,
 ): Promise<void> {
   const generation = ++capabilityProbeGeneration;
-  viewProvider.updateCapabilities({ phase: 'checking' });
+  capabilityProbeChecking = true;
+  capabilityProbeError = undefined;
+  onUpdate?.();
   try {
     const capabilities = await probeRemoteCapabilities({ ...settings, sshTarget: target }, output);
     if (generation !== capabilityProbeGeneration) {
       return;
     }
     lastCapabilities = capabilities;
-    viewProvider.updateCapabilities({ phase: 'ready', capabilities });
+    capabilityProbeChecking = false;
+    onUpdate?.();
   } catch (error) {
     if (generation !== capabilityProbeGeneration) {
       return;
     }
     const message = error instanceof Error ? error.message : String(error);
     output.appendLine(`[capabilities] ${message}`);
-    viewProvider.updateCapabilities({ phase: 'error', message });
+    capabilityProbeChecking = false;
+    capabilityProbeError = message;
+    onUpdate?.();
   }
 }
 
@@ -329,36 +357,17 @@ async function copyTerminalCommand(command: string, message: string): Promise<vo
   void vscode.window.showInformationMessage(`${message} Paste it into the remote terminal when ready.`);
 }
 
-function createAdvancedTunGuide(capabilities: RemoteCapabilities | undefined, port: number): string {
-  const detected = capabilities
-    ? [
-        `- Operating system: ${capabilities.operatingSystem}`,
-        `- sudo access: ${capabilities.sudoAccess}`,
-        `- /dev/net/tun: ${capabilities.tunDevice ? 'available' : 'not detected'}`,
-        `- tun2socks: ${capabilities.tun2socks ? 'available' : 'not detected'}`,
-        `- ip command: ${capabilities.ipCommand ? 'available' : 'not detected'}`,
-      ].join('\n')
-    : '- No capability check is available. Start sharing first to run the read-only check.';
-
-  return `# Advanced transparent TUN mode
-
-This mode is configured from the expandable Advanced TUN mode section at the bottom of the Local Network Share sidebar and is never enabled automatically. Opening this guide requires an explicit risk confirmation.
-
-A TUN interface can make applications that ignore proxy variables use the shared SOCKS5 endpoint at \`127.0.0.1:${port}\`. The risky part is changing the host's global routes or DNS: on a Remote-SSH or multi-user server, that can break the SSH session or affect other users.
-
-## Read-only capability check
-
-${detected}
-
-## Safety requirements
-
-- Prefer a dedicated network namespace or per-process routing instead of replacing the host's default route.
-- Keep explicit routes for the SSH server and local networks outside the TUN path.
-- Plan a rollback command before making any route or DNS change.
-- Do not run unreviewed TUN commands on a shared server.
-
-This extension does not request a sudo password, create interfaces, install tun2socks, or change routes/DNS. Advanced mode remains a manual, expert workflow.
-
-Reference: https://github.com/xjasonlyu/tun2socks/wiki/Examples
-`;
+function createAdvancedTunPanelState(
+  manager: TunnelManager,
+  settings: ReturnType<typeof readSettings>,
+  target?: string,
+): AdvancedTunPanelState {
+  return {
+    sharingActive: manager.currentState.phase === 'active',
+    checking: capabilityProbeChecking,
+    target: manager.currentState.target ?? target,
+    socksPort: manager.currentState.remotePort ?? settings.remotePort,
+    capabilities: lastCapabilities,
+    error: capabilityProbeError,
+  };
 }

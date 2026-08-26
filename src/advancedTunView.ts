@@ -139,6 +139,7 @@ export class AdvancedTunViewContent {
     .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .danger { border-color: var(--vscode-inputValidation-warningBorder); background: var(--vscode-inputValidation-warningBackground); }
     .danger strong { color: var(--vscode-inputValidation-warningForeground); }
+    .danger .actions { justify-content: center; }
     [hidden] { display: none !important; }
     .requirements { display: grid; gap: 10px; }
     .requirement { padding: 10px 0; border-bottom: 1px solid var(--vscode-widget-border); }
@@ -190,12 +191,12 @@ export class AdvancedTunViewContent {
         <p id="connectionStatus" class="subtitle"></p>
         <div id="requirements" class="requirements"></div>
         <div class="actions">
-          <button id="check" class="secondary">Recheck</button>
+          <button id="check">Recheck</button>
         </div>
       </section>
 
-      <section class="card">
-        <h2>Options</h2>
+      <details class="card">
+        <summary>Options</summary>
         <label for="routing">Routing isolation</label>
         <select id="routing">
           <option value="namespace">Isolated network namespace (Recommended)</option>
@@ -213,11 +214,11 @@ export class AdvancedTunViewContent {
         <select id="dns">
           <option value="preserve">Keep server DNS reachable outside the TUN route</option>
         </select>
-      </section>
+      </details>
 
       <section class="card">
         <h2>TUN control</h2>
-        <p class="note">Start and Stop place the selected command in a remote terminal for review. The extension never submits sudo or changes server networking in the background. Start automatically activates Basic sharing when needed.</p>
+        <p class="note">Start or Stop prepares the corresponding TUN command in a remote terminal. Review it, then press Enter to run it. The extension never runs sudo automatically. Start also enables Basic sharing when needed.</p>
         <div class="actions">
           <button id="prepareTunStart">Start</button>
           <button id="prepareTunStop" class="secondary">Stop</button>

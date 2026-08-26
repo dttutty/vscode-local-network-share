@@ -1,14 +1,5 @@
 export type TunRoutingMode = 'namespace' | 'global';
 export type TunDnsMode = 'preserve' | 'tunnel';
-export type TunWorkflowStage = 'check' | 'start' | 'stop';
-
-export interface TunWorkflowState {
-  checking: boolean;
-  tunnelPhase: 'idle' | 'starting' | 'active' | 'stopping' | 'error';
-  hasCapabilities: boolean;
-  stopped: boolean;
-}
-
 export interface TunSetupOptions {
   routingMode: TunRoutingMode;
   interfaceName: string;
@@ -19,22 +10,6 @@ export interface TunSetupOptions {
 export interface TunSetupContext {
   target?: string;
   socksPort: number;
-}
-
-export function determineTunWorkflowStage(state: TunWorkflowState): TunWorkflowStage {
-  if (state.tunnelPhase === 'active' || state.tunnelPhase === 'stopping') {
-    return 'stop';
-  }
-  if (state.tunnelPhase === 'starting') {
-    return 'start';
-  }
-  if (state.checking) {
-    return 'check';
-  }
-  if (state.stopped) {
-    return 'stop';
-  }
-  return state.hasCapabilities ? 'start' : 'check';
 }
 
 export function validateTunSetupOptions(value: unknown): TunSetupOptions {

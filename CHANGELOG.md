@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.12
+
+- Simplify Advanced TUN into a single control page with automatic readiness checks, always-visible options, and compact Recheck, Start, and Stop actions.
+- Remove the old Check → Start → Stop stage indicator and its unused workflow state.
+
 ## 0.2.11
 
 - Require an open folder on the Remote-SSH target, with a clear sidebar warning and disabled Start button instead of prompting users in empty windows for an SSH alias.

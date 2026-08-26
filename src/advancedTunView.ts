@@ -4,7 +4,6 @@ import type { RemoteCapabilities } from './remoteCapabilities';
 import { createTunStartCommand, createTunStopCommand, validateTunSetupOptions } from './tunSettings';
 
 export interface AdvancedTunViewState {
-  workflowStage: 'check' | 'start' | 'stop';
   sharingActive: boolean;
   checking: boolean;
   target?: string;
@@ -15,8 +14,7 @@ export interface AdvancedTunViewState {
 
 export interface AdvancedTunViewCallbacks {
   closeView(): Promise<void>;
-  startSharing(): Promise<void>;
-  stopSharing(): Promise<void>;
+  startSharing(): Promise<boolean>;
   checkRequirements(): Promise<void>;
 }
 
@@ -54,17 +52,16 @@ export class AdvancedTunViewContent {
     }
     const typed = message as { type: unknown; options?: unknown };
     try {
-      if (typed.type === 'startSharing') {
-        await this.callbacks.startSharing();
-      } else if (typed.type === 'closeView') {
+      if (typed.type === 'closeView') {
         await this.callbacks.closeView();
-      } else if (typed.type === 'stopSharing') {
-        await this.callbacks.stopSharing();
       } else if (typed.type === 'checkRequirements') {
         await this.callbacks.checkRequirements();
       } else if (typed.type === 'prepareTunStart') {
         if (!this.state.sharingActive) {
-          throw new Error('Start network sharing before preparing the TUN command.');
+          const started = await this.callbacks.startSharing();
+          if (!started) {
+            throw new Error('Network sharing could not be started. Review the Local Network Share output and try again.');
+          }
         }
         const options = validateTunSetupOptions(typed.options);
         const command = createTunStartCommand(options, {
@@ -138,11 +135,6 @@ export class AdvancedTunViewContent {
     h2 { margin: 0 0 16px; font-size: 16px; }
     p { line-height: 1.55; }
     .subtitle { margin: 0 0 16px; color: var(--vscode-descriptionForeground); }
-    .workflow { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 18px 0; }
-    .step { flex: 1; min-width: 0; padding: 8px 4px; color: var(--vscode-descriptionForeground); background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); border-radius: 999px; text-align: center; font-size: 12px; font-weight: 600; }
-    .step.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-focusBorder); box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
-    .step.complete { color: var(--vscode-testing-iconPassed); border-color: var(--vscode-testing-iconPassed); }
-    .arrow { color: var(--vscode-descriptionForeground); font-size: 14px; }
     .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
     .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .danger { border-color: var(--vscode-inputValidation-warningBorder); background: var(--vscode-inputValidation-warningBackground); }
@@ -192,28 +184,18 @@ export class AdvancedTunViewContent {
     </section>
 
     <div id="tunContent" hidden>
-      <nav class="workflow" aria-label="Setup progress">
-        <div id="stage-check" class="step">1. Check</div>
-        <span class="arrow" aria-hidden="true">→</span>
-        <div id="stage-start" class="step">2. Start</div>
-        <span class="arrow" aria-hidden="true">→</span>
-        <div id="stage-stop" class="step">3. Stop</div>
-      </nav>
-
       <div class="grid wide">
       <section class="card">
-        <h2>1. Server readiness</h2>
+        <h2>Server readiness</h2>
         <p id="connectionStatus" class="subtitle"></p>
         <div id="requirements" class="requirements"></div>
         <div class="actions">
-          <button id="check">Check server</button>
-          <button id="startSharing" class="secondary">Start sharing</button>
-          <button id="stopSharing" class="secondary">Stop sharing</button>
+          <button id="check" class="secondary">Recheck</button>
         </div>
       </section>
 
-      <details class="card">
-        <summary>2. Setup options</summary>
+      <section class="card">
+        <h2>Options</h2>
         <label for="routing">Routing isolation</label>
         <select id="routing">
           <option value="namespace">Isolated network namespace (Recommended)</option>
@@ -231,18 +213,18 @@ export class AdvancedTunViewContent {
         <select id="dns">
           <option value="preserve">Keep server DNS reachable outside the TUN route</option>
         </select>
-      </details>
-      </div>
+      </section>
 
-      <details class="card wide">
-        <summary>3. Review and start</summary>
-        <p class="note">Prepare the selected command in a remote terminal, review it there, then press Enter yourself. The extension never submits sudo or changes the server network in the background.</p>
+      <section class="card">
+        <h2>TUN control</h2>
+        <p class="note">Start and Stop place the selected command in a remote terminal for review. The extension never submits sudo or changes server networking in the background. Start automatically activates Basic sharing when needed.</p>
         <div class="actions">
-          <button id="prepareTunStart">Prepare Start TUN</button>
-          <button id="prepareTunStop" class="secondary">Prepare Stop TUN</button>
+          <button id="prepareTunStart">Start</button>
+          <button id="prepareTunStop" class="secondary">Stop</button>
         </div>
         <div id="notice" class="notice" role="status"></div>
-      </details>
+      </section>
+      </div>
     </div>
   </main>
 
@@ -306,18 +288,12 @@ export class AdvancedTunViewContent {
       },
     ];
     const prepareTunStart = document.getElementById('prepareTunStart');
+    const prepareTunStop = document.getElementById('prepareTunStop');
     const routing = document.getElementById('routing');
     const globalWarning = document.getElementById('globalWarning');
-    const stageOrder = ['check', 'start', 'stop'];
 
     function render(next) {
       state = next;
-      const activeIndex = stageOrder.indexOf(state.workflowStage);
-      stageOrder.forEach((stage, index) => {
-        const element = document.getElementById('stage-' + stage);
-        element.className = 'step' + (index === activeIndex ? ' active' : (index < activeIndex ? ' complete' : ''));
-        element.setAttribute('aria-current', index === activeIndex ? 'step' : 'false');
-      });
       const allReady = state.capabilities && requirements.every(item => item.test(state.capabilities));
       document.getElementById('connectionStatus').textContent = state.checking
         ? 'Checking ' + (state.target || 'the selected server') + '…'
@@ -327,21 +303,12 @@ export class AdvancedTunViewContent {
             ? allReady
               ? 'Check complete. The server is ready for Advanced TUN setup.'
               : 'Check complete. Review the explanations below before continuing.'
-            : state.workflowStage === 'stop'
-              ? 'Sharing is stopped. Run Check to begin again.'
-              : 'Check the remote server before starting network sharing.';
-      const start = document.getElementById('startSharing');
-      start.style.display = state.sharingActive ? 'none' : '';
-      start.disabled = state.checking || !state.capabilities;
-      const stop = document.getElementById('stopSharing');
-      stop.style.display = state.sharingActive ? '' : 'none';
+            : 'The server has not been checked yet.';
       const check = document.getElementById('check');
       check.disabled = state.checking;
-      check.textContent = state.checking ? 'Checking…' : (state.capabilities ? 'Check again' : 'Check server');
-      check.className = state.workflowStage === 'check' ? '' : 'secondary';
-      start.className = state.workflowStage === 'start' ? '' : 'secondary';
-      stop.className = state.workflowStage === 'stop' ? '' : 'secondary';
-      prepareTunStart.disabled = state.checking || !state.sharingActive || !state.capabilities;
+      check.textContent = state.checking ? 'Checking…' : 'Recheck';
+      prepareTunStart.disabled = state.checking || !state.capabilities;
+      prepareTunStop.disabled = state.checking || !state.capabilities;
       const container = document.getElementById('requirements');
       container.replaceChildren(...requirements.map(item => {
         const row = document.createElement('div');
@@ -382,8 +349,6 @@ export class AdvancedTunViewContent {
       document.getElementById('riskGate').hidden = true;
       document.getElementById('tunContent').hidden = false;
     });
-    document.getElementById('startSharing').addEventListener('click', () => vscode.postMessage({ type: 'startSharing' }));
-    document.getElementById('stopSharing').addEventListener('click', () => vscode.postMessage({ type: 'stopSharing' }));
     document.getElementById('check').addEventListener('click', () => vscode.postMessage({ type: 'checkRequirements' }));
     prepareTunStart.addEventListener('click', () => vscode.postMessage({
       type: 'prepareTunStart',
@@ -394,7 +359,7 @@ export class AdvancedTunViewContent {
         dnsMode: document.getElementById('dns').value,
       },
     }));
-    document.getElementById('prepareTunStop').addEventListener('click', () => vscode.postMessage({
+    prepareTunStop.addEventListener('click', () => vscode.postMessage({
       type: 'prepareTunStop',
       options: {
         routingMode: routing.value,

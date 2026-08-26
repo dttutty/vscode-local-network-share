@@ -49,6 +49,7 @@ const ALLOWED_COMMANDS = new Set([
   'localNetworkShare.showOutput',
   'localNetworkShare.openSettings',
   'localNetworkShare.openAdvancedTunSetup',
+  'localNetworkShare.openRemoteSshExtension',
 ]);
 
 export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
@@ -177,6 +178,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     .mode-tab.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); font-weight: 600; }
     .dependency-warning { padding: 10px; border: 1px solid var(--vscode-inputValidation-warningBorder); border-radius: 7px; color: var(--vscode-inputValidation-warningForeground); background: var(--vscode-inputValidation-warningBackground); font-size: 12px; line-height: 1.5; }
     .dependency-warning strong { display: block; margin-bottom: 3px; }
+    .dependency-warning button { margin-top: 8px; }
     .card { padding: 14px; border: 1px solid var(--vscode-widget-border); border-radius: 8px; background: var(--vscode-sideBar-background); }
     .hero { display: grid; gap: 12px; }
     .status-line, .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -235,6 +237,7 @@ export class ShareViewProvider implements vscode.WebviewViewProvider, vscode.Dis
     <div id="dependencyWarning" class="dependency-warning" role="alert" hidden>
       <strong>Remote - SSH update required</strong>
       <span id="dependencyMessage"></span>
+      <button class="secondary" data-command="localNetworkShare.openRemoteSshExtension">Open Remote - SSH</button>
     </div>
     <div id="workspaceWarning" class="dependency-warning" role="alert" hidden>
       <strong>Remote folder required</strong>

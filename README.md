@@ -22,6 +22,7 @@ network policies.
 - A local OpenSSH client with support for dynamic remote forwarding.
 - Key-based or SSH Agent authentication for the additional tunnel connection.
 - `AllowTcpForwarding` enabled by the remote SSH server administrator.
+- Advanced isolated TUN mode additionally requires `tun2socks`, `iproute2`, `socat`, `/dev/net/tun`, and sudo access on the server.
 
 ## Use
 
@@ -106,7 +107,7 @@ The extension can perform a non-interactive, read-only check for sudo membership
 
 Because the readiness check never prompts for a password, password-protected sudo, custom sudoers rules, and LDAP/AD administrator groups may be shown as **Manual check**. This does not mean the account lacks sudo access; run `sudo -v` in the remote terminal to verify it. Each readiness result includes a visible explanation and next step.
 
-The main status view contains **TUN mode**, which switches directly to a custom page inside the Local Network Share Sidebar Webview instead of opening an editor tab or redundant modal. On every entry, only the physical/BMC-access warning and an **I acknowledge** button are shown; acknowledgement removes the warning and reveals the advanced controls. The page then shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. This version does not request a sudo password, create a TUN interface, install software, or change routes/DNS. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
+The main status view contains **TUN mode**, which switches directly to a custom page inside the Local Network Share Sidebar Webview instead of opening an editor tab or redundant modal. On every entry, only the physical/BMC-access warning and an **I acknowledge** button are shown; acknowledgement removes the warning and reveals the advanced controls. The page then shows a prominent **Check → Start → Stop** workflow that highlights the current stage, friendly readiness cards, and collapsible routing, interface, MTU, DNS, and review options. Advanced TUN has no Command Palette entry and is never enabled automatically. **Prepare Start TUN** and **Prepare Stop TUN** place a single reviewable command into a remote terminal without pressing Enter; the user reviews it, executes it, and responds to sudo directly in that terminal. Changing a shared server's default route can disconnect SSH and affect other users, so the page recommends an isolated network namespace and clearly marks global routing as high risk.
 
 Opening Advanced TUN hides the main Network Sharing dashboard and switches the sidebar to the advanced interface. Selecting **Basic mode** restores the main dashboard. This is an interface switch only: an active proxy tunnel keeps running until **Stop sharing** is selected.
 

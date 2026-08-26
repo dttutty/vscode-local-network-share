@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import type { RemoteCapabilities } from './remoteCapabilities';
-import { createTunSetupPlan, validateTunSetupOptions } from './tunSettings';
+import { createTunStartCommand, createTunStopCommand, validateTunSetupOptions } from './tunSettings';
 
 export interface AdvancedTunViewState {
   workflowStage: 'check' | 'start' | 'stop';
@@ -62,14 +62,30 @@ export class AdvancedTunViewContent {
         await this.callbacks.stopSharing();
       } else if (typed.type === 'checkRequirements') {
         await this.callbacks.checkRequirements();
-      } else if (typed.type === 'copyPlan') {
+      } else if (typed.type === 'prepareTunStart') {
+        if (!this.state.sharingActive) {
+          throw new Error('Start network sharing before preparing the TUN command.');
+        }
         const options = validateTunSetupOptions(typed.options);
-        const plan = createTunSetupPlan(options, {
+        const command = createTunStartCommand(options, {
           target: this.state.target,
           socksPort: this.state.socksPort,
         });
-        await vscode.env.clipboard.writeText(plan);
-        void this.webview?.postMessage({ type: 'notice', message: 'Setup plan copied to the clipboard.' });
+        await this.prepareTerminalCommand(
+          command,
+          'Prepare Advanced TUN start command?',
+          'The command will be inserted into a remote terminal but will not run until you review it and press Enter. sudo prompts only in that terminal.',
+          'Start command prepared. Review it in the terminal, then press Enter when ready.',
+        );
+      } else if (typed.type === 'prepareTunStop') {
+        const options = validateTunSetupOptions(typed.options);
+        const command = createTunStopCommand(options);
+        await this.prepareTerminalCommand(
+          command,
+          'Prepare Advanced TUN stop command?',
+          'The cleanup command will be inserted into a remote terminal but will not run until you review it and press Enter.',
+          'Stop command prepared. Review it in the terminal, then press Enter when ready.',
+        );
       }
     } catch (error) {
       void this.webview?.postMessage({
@@ -78,6 +94,26 @@ export class AdvancedTunViewContent {
         message: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  private async prepareTerminalCommand(
+    command: string,
+    title: string,
+    detail: string,
+    notice: string,
+  ): Promise<void> {
+    const selection = await vscode.window.showWarningMessage(
+      title,
+      { modal: true, detail },
+      'Prepare command',
+    );
+    if (selection !== 'Prepare command') {
+      return;
+    }
+    const terminal = vscode.window.createTerminal({ name: 'Local Network Share — TUN' });
+    terminal.show();
+    terminal.sendText(command, false);
+    void this.webview?.postMessage({ type: 'notice', message: notice });
   }
 
   private createHtml(): string {
@@ -147,7 +183,7 @@ export class AdvancedTunViewContent {
       <button class="mode-tab active" aria-selected="true">TUN mode</button>
     </nav>
     <h1>Advanced TUN Setup</h1>
-    <p class="subtitle">A guided planning page for applications that cannot use SOCKS5 or HTTP proxy settings.</p>
+    <p class="subtitle">Use this only when Basic mode does not work for a program. TUN mode can route that program's network traffic through your laptop without requiring proxy support.</p>
 
     <section id="riskGate" class="card danger">
       <strong>⚠ This can interrupt SSH access.</strong>
@@ -193,16 +229,18 @@ export class AdvancedTunViewContent {
 
         <label for="dns">DNS handling</label>
         <select id="dns">
-          <option value="preserve">Keep current server DNS (Recommended)</option>
-          <option value="tunnel">Route DNS through the tunnel (Advanced)</option>
+          <option value="preserve">Keep server DNS reachable outside the TUN route</option>
         </select>
       </details>
       </div>
 
       <details class="card wide">
-        <summary>3. Review and copy</summary>
-        <p class="note">This version prepares and copies a reviewable setup plan. It does not request a sudo password or automatically create an interface, change routes, or alter DNS.</p>
-        <div class="actions"><button id="copyPlan">Copy setup plan</button></div>
+        <summary>3. Review and start</summary>
+        <p class="note">Prepare the selected command in a remote terminal, review it there, then press Enter yourself. The extension never submits sudo or changes the server network in the background.</p>
+        <div class="actions">
+          <button id="prepareTunStart">Prepare Start TUN</button>
+          <button id="prepareTunStop" class="secondary">Prepare Stop TUN</button>
+        </div>
         <div id="notice" class="notice" role="status"></div>
       </details>
     </div>
@@ -247,6 +285,16 @@ export class AdvancedTunViewContent {
           : 'tun2socks was not found in PATH. Normal SOCKS5 and HTTP proxy sharing still works; only Advanced TUN needs this helper.',
       },
       {
+        label: 'Namespace relay (socat)',
+        test: value => value && value.socat,
+        warning: () => false,
+        status: () => 'Not installed',
+        pending: 'Checks for the TCP and DNS relay used by isolated namespace mode.',
+        detail: value => value.socat
+          ? 'socat is available for isolated namespace mode.'
+          : 'socat was not found. Install it before using isolated namespace mode; global routing does not require it.',
+      },
+      {
         label: 'Networking tools',
         test: value => value && value.ipCommand,
         warning: () => false,
@@ -257,7 +305,7 @@ export class AdvancedTunViewContent {
           : 'The ip command was not found. Install the iproute2 package for your distribution before using Advanced TUN.',
       },
     ];
-    const copyPlan = document.getElementById('copyPlan');
+    const prepareTunStart = document.getElementById('prepareTunStart');
     const routing = document.getElementById('routing');
     const globalWarning = document.getElementById('globalWarning');
     const stageOrder = ['check', 'start', 'stop'];
@@ -293,6 +341,7 @@ export class AdvancedTunViewContent {
       check.className = state.workflowStage === 'check' ? '' : 'secondary';
       start.className = state.workflowStage === 'start' ? '' : 'secondary';
       stop.className = state.workflowStage === 'stop' ? '' : 'secondary';
+      prepareTunStart.disabled = state.checking || !state.sharingActive || !state.capabilities;
       const container = document.getElementById('requirements');
       container.replaceChildren(...requirements.map(item => {
         const row = document.createElement('div');
@@ -336,8 +385,17 @@ export class AdvancedTunViewContent {
     document.getElementById('startSharing').addEventListener('click', () => vscode.postMessage({ type: 'startSharing' }));
     document.getElementById('stopSharing').addEventListener('click', () => vscode.postMessage({ type: 'stopSharing' }));
     document.getElementById('check').addEventListener('click', () => vscode.postMessage({ type: 'checkRequirements' }));
-    copyPlan.addEventListener('click', () => vscode.postMessage({
-      type: 'copyPlan',
+    prepareTunStart.addEventListener('click', () => vscode.postMessage({
+      type: 'prepareTunStart',
+      options: {
+        routingMode: routing.value,
+        interfaceName: document.getElementById('interfaceName').value,
+        mtu: Number(document.getElementById('mtu').value),
+        dnsMode: document.getElementById('dns').value,
+      },
+    }));
+    document.getElementById('prepareTunStop').addEventListener('click', () => vscode.postMessage({
+      type: 'prepareTunStop',
       options: {
         routingMode: routing.value,
         interfaceName: document.getElementById('interfaceName').value,
